@@ -116,6 +116,28 @@ app.audioCycleInterval_ = null;
 app.videoCycleInterval_ = null;
 
 
+app.extendedConfigurationManager = {
+  init: function() {
+    "use strict";
+    var formElement = document.getElementById('extendedConfiguration');
+    var stored = window.localStorage.getItem('extendedConfiguration');
+    if (stored) {
+      formElement.value = stored;
+    }
+  },
+  getAndStoreConfiguration: function () {
+    var configuration, formElement = document.getElementById('extendedConfiguration');
+    window.localStorage.setItem('extendedConfiguration', formElement.value);
+    try {
+      configuration = JSON.parse(formElement.value.replace(/\/\*(.|[\r\n])*\*\//gm, ''));
+    } catch(e) {
+      console.error('Invalid JSON configuration string specified', e);
+    }
+    return configuration;
+  } 
+};
+
+
 /**
  * Initializes the application.
  */
@@ -135,6 +157,8 @@ app.init = function() {
   document.getElementById('mpdList').value =
       'assets/car_cenc-20120827-manifest.mpd';
 
+  app.extendedConfigurationManager.init();
+  
   app.video_ =
       /** @type {!HTMLVideoElement} */ (document.getElementById('video'));
   app.videoResDebug_ = document.getElementById('videoResDebug');
@@ -675,7 +699,20 @@ app.loadDashStream = function() {
   }
 
   var mediaUrl = document.getElementById('manifestUrlInput').value;
+  var extendedConfig = app.extendedConfigurationManager.getAndStoreConfiguration();
 
+  /*
+{ 
+  "manifestModifier": {
+    "replacements": [{
+      "match": "(\"mp4a\\.40\\.2\")+",
+      "options": "g",
+      "replacement": "\"mp4a.40.5\""
+    }]
+  }
+}
+   */
+  
   console.assert(app.estimator_);
   if (app.estimator_.getDataAge() >= 3600) {
     // Disregard any bandwidth data older than one hour.  The user may have
@@ -687,11 +724,11 @@ app.loadDashStream = function() {
       app.estimator_);
   var abrManager = new shaka.media.SimpleAbrManager();
   app.load_(
-      new shaka.player.DashVideoSource(
+      new vimond.shaka.player.ModifyableDashVideoSource(
           mediaUrl,
           app.interpretContentProtection_,
           estimator,
-          abrManager));
+          abrManager, extendedConfig && extendedConfig.manifestModifier));
 };
 
 
