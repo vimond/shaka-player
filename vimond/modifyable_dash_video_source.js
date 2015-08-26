@@ -37,8 +37,9 @@ if (shaka.features.Dash) {
 
 /** @override */
 vimond.shaka.player.ModifyableDashVideoSource.prototype.load = function() {
+    var url = new shaka.util.FailoverUri(this.networkCallback_, [new goog.Uri(this.mpdUrl_)]);
     var mpdRequest =
-        new vimond.shaka.dash.ModifyableMpdRequest(this.mpdUrl_, this.mpdRequestTimeout, this.opt_manifestModificationSetup_);
+        new vimond.shaka.dash.ModifyableMpdRequest(url, this.mpdRequestTimeout, this.opt_manifestModificationSetup_);
     return mpdRequest.send().then(shaka.util.TypedBind(this,
             /** @param {!shaka.dash.mpd.Mpd} mpd */
             function(mpd) {
@@ -47,15 +48,21 @@ vimond.shaka.player.ModifyableDashVideoSource.prototype.load = function() {
                         this.captionsLang_[i], this.captionsMime_[i]);
                 }
 
+                if (!shaka.features.Live && mpd.type == 'dynamic') {
+                    var error = new Error('Live manifest support not enabled.');
+                    error.type = 'stream';
+                    return Promise.reject(error);
+                }
+
                 var mpdProcessor =
                     new shaka.dash.MpdProcessor(this.interpretContentProtection_);
-                this.manifestInfo = mpdProcessor.process(mpd);
+                this.manifestInfo = mpdProcessor.process(mpd, this.networkCallback_);
 
                 var baseClassLoad = shaka.player.StreamVideoSource.prototype.load;
                 var p = baseClassLoad.call(this);
 
                 return p;
-            }.bind(this))
+            })
     );
 };
 
