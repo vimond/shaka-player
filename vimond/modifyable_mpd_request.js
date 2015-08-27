@@ -18,7 +18,7 @@ goog.require('shaka.util.FailoverUri');
  *
  * @param {!shaka.util.FailoverUri} url The URL.
  * @param {number=} opt_requestTimeout The timeout for a MpdRequest in seconds.
- * @param {object=} opt_modificationSetup
+ * @param {vimond.shaka.dash.ManifestModificationSetup=} opt_modificationSetup
  *
  * @constructor
  * @struct
@@ -36,9 +36,7 @@ goog.inherits(vimond.shaka.dash.ModifyableMpdRequest, shaka.dash.MpdRequest);
 /** @override */
 vimond.shaka.dash.ModifyableMpdRequest.prototype.send = function() {
     var url = this.url_;
-    return url.fetch(this.parameters_).then(
-        /** @param {!ArrayBuffer|string} data */
-        function(data) {
+    return url.fetch(this.parameters_).then(function(data) {
             var mpd = shaka.dash.mpd.parseMpd(this.manifestModifier_.process(data), url.urls);
             if (mpd) {
                 return Promise.resolve(mpd);

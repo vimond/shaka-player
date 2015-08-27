@@ -9,16 +9,16 @@ goog.provide('vimond.shaka.dash.ManifestModifier');
 /**
  * Creates an ManifestModifier with a ruleset/configuration for modifications to be applied.
  *
- * @param {Object=} opt_modificationSetup
+ * @param {vimond.shaka.dash.ManifestModificationSetup=} opt_modificationSetup
  *
  * @constructor
  * @struct
  * @exportDoc
  */
 vimond.shaka.dash.ManifestModifier = function(opt_modificationSetup) {
-    /** @private {Object} */
-    this.modificationSetup_ = opt_modificationSetup;
-}
+    /** @private {?vimond.shaka.dash.ManifestModificationSetup} */
+    this.modificationSetup_ = opt_modificationSetup || null;
+};
 
 
 /*
@@ -46,11 +46,11 @@ manifestModifier: {
  * Processes the given manifest text.
  * This function modifies |mpd| but does not take ownership of it.
  *
- * @param {String} manifest
- * @return {String}
+ * @param {string|ArrayBuffer|null} manifest
+ * @return {string}
  */
 vimond.shaka.dash.ManifestModifier.prototype.process = function(manifest) {
-    if (this.modificationSetup_) {
+    if (typeof manifest === 'string' && this.modificationSetup_) {
         var replacements = this.modificationSetup_.replacements;
         if (replacements) {
             manifest = replacements.reduce(function (prevData, replaceEntry) {
@@ -66,9 +66,9 @@ vimond.shaka.dash.ManifestModifier.prototype.process = function(manifest) {
                 return replaced;
             }, manifest);
         }
-        if (typeof this.modificationSetup_.presentationTimeOffsetFixPolicy === 'string') {
-
-        }
+        //if (typeof this.modificationSetup_.presentationTimeOffsetFixPolicy === 'string') {
+        //
+        //}
     }
     return manifest;
 };

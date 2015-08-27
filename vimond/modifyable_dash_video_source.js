@@ -17,17 +17,17 @@ goog.require('shaka.dash.mpd');
  * @param {?shaka.player.DashVideoSource.ContentProtectionCallback} interpretContentProtection A callback to interpret the ContentProtection elements in the MPD.
  * @param {shaka.util.IBandwidthEstimator} estimator
  * @param {shaka.media.IAbrManager} abrManager
- * @param {object=} opt_manifestModificationSetup
+ * @param {vimond.shaka.dash.ManifestModificationSetup=} opt_manifestModificationSetup
  *
  * @constructor
  * @struct
- * @extends {shaka.player.StreamVideoSource}
+ * @extends {shaka.player.DashVideoSource}
  * @exportDoc
  */
 vimond.shaka.player.ModifyableDashVideoSource = function(mpdUrl, interpretContentProtection, estimator, abrManager, opt_manifestModificationSetup) {
     shaka.player.DashVideoSource.call(this, mpdUrl, interpretContentProtection, estimator, abrManager);
-    /** @private {Object} */
-    this.opt_manifestModificationSetup_ = opt_manifestModificationSetup;
+    /** @private {?vimond.shaka.dash.ManifestModificationSetup} */
+    this.opt_manifestModificationSetup_ = opt_manifestModificationSetup || null;
 };
 
 goog.inherits(vimond.shaka.player.ModifyableDashVideoSource, shaka.player.DashVideoSource);
@@ -75,7 +75,7 @@ vimond.shaka.player.ModifyableDashVideoSource.prototype.onUpdateManifest = funct
             function(mpd) {
                 var mpdProcessor =
                     new shaka.dash.MpdProcessor(this.interpretContentProtection_);
-                var newManifestInfo = mpdProcessor.process(mpd);
+                var newManifestInfo = mpdProcessor.process(mpd, this.networkCallback_);
                 return Promise.resolve(newManifestInfo);
             })
     );
