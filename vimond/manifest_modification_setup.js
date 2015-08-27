@@ -4,19 +4,19 @@
  * @fileoverview Specifies the configuration object for manifest modification.
  */
 
-goog.provide('vimond.shaka.dash.ManifestModificationSetup');
+goog.provide('shaka.vimond.dash.ManifestModificationSetup');
 
 /**
  * Creates an ManifestModificationSetup object speficying rules for manifest modification.
- * @param {Array<vimond.shaka.dash.ReplacementRule>=} opt_replacements
+ * @param {Array<shaka.vimond.dash.ReplacementRule>=} opt_replacements
  * @param {string=} opt_presentationTimeOffsetFixPolicy
  * @constructor
  * @struct
  * @exportDoc
  */
-vimond.shaka.dash.ManifestModificationSetup = function(opt_replacements, opt_presentationTimeOffsetFixPolicy) {
+shaka.vimond.dash.ManifestModificationSetup = function(opt_replacements, opt_presentationTimeOffsetFixPolicy) {
     'use strict';    
-    /** @public {?Array<vimond.shaka.dash.ReplacementRule>} */
+    /** @public {?Array<shaka.vimond.dash.ReplacementRule>} */
     this.replacements = opt_replacements || null;
 
     /** @public {?string} */ 

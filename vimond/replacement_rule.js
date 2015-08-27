@@ -4,7 +4,7 @@
  * @fileoverview Specifies a replacement rule to be used in the manifest modifier setup.
  */
 
-goog.provide('vimond.shaka.dash.ReplacementRule');
+goog.provide('shaka.vimond.dash.ReplacementRule');
 
 /**
  * 
@@ -15,7 +15,7 @@ goog.provide('vimond.shaka.dash.ReplacementRule');
  * @struct
  * @exportDoc
  */
-vimond.shaka.dash.ReplacementRule = function(match, replacement, opt_options) {
+shaka.vimond.dash.ReplacementRule = function(match, replacement, opt_options) {
     'use strict';
 
     /** @public {RegExp|string} */

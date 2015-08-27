@@ -1,4 +1,4 @@
-goog.require('vimond.shaka.dash.ManifestModifier');
+goog.require('shaka.vimond.dash.ManifestModifier');
 
 describe('ManifestModifier', function() {
     'use strict';
@@ -25,26 +25,26 @@ describe('ManifestModifier', function() {
     
     describe('process', function() {
         it('leaves the manifest unchanged when no regonized configuration is set', function(){
-            var modifier = new vimond.shaka.dash.ManifestModifier();
+            var modifier = new shaka.vimond.dash.ManifestModifier();
             expect(modifier.process(testdata)).toBe(testdata);
         });
         
         it('replaces a codec entry with another one', function(){
-            var modifier = new vimond.shaka.dash.ManifestModifier({ replacements: [codecReplacement]});
+            var modifier = new shaka.vimond.dash.ManifestModifier({ replacements: [codecReplacement]});
             var processed = modifier.process(testdata);
             expect(processed).toContain(codecReplacement.replacement);
             expect(isValidXml(processed)).toBe(true);
         });
 
         it('removes a segment element, and accepts replacement regex specified as a string', function(){
-            var modifier = new vimond.shaka.dash.ManifestModifier({ replacements: [emptySegmentRemoval]});
+            var modifier = new shaka.vimond.dash.ManifestModifier({ replacements: [emptySegmentRemoval]});
             var processed = modifier.process(testdata);
             expect(processed).not.toContain(emptySegmentToBeRemoved);
             expect(isValidXml(processed)).toBe(true);
         });
 
         it('applies all replacements if more than one', function(){
-            var modifier = new vimond.shaka.dash.ManifestModifier({ replacements: [codecReplacement, emptySegmentRemoval]});
+            var modifier = new shaka.vimond.dash.ManifestModifier({ replacements: [codecReplacement, emptySegmentRemoval]});
             var processed = modifier.process(testdata);
             expect(processed).toContain(codecReplacement.replacement);
             expect(processed).not.toContain(emptySegmentToBeRemoved);
@@ -52,7 +52,7 @@ describe('ManifestModifier', function() {
         })
         
         //it('applies the offset of the first video segment as the presentationTimeOffset, with the representation\'s timescale', function() {
-        //    var modifier = new vimond.shaka.dash.ManifestModifier({presentationTimeOffsetFixPolicy: 'firstVideo'});
+        //    var modifier = new shaka.vimond.dash.ManifestModifier({presentationTimeOffsetFixPolicy: 'firstVideo'});
         //    var processed = modifier.process(testdata);
         //    
         //});

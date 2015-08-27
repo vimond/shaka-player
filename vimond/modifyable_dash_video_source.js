@@ -4,11 +4,11 @@
  * @fileoverview Implements a DASH video source where the manifest can be modified client side.
  */
 
-goog.provide('vimond.shaka.player.ModifyableDashVideoSource');
+goog.provide('shaka.vimond.player.ModifyableDashVideoSource');
 
 goog.require('shaka.player.DashVideoSource');
 goog.require('shaka.dash.MpdProcessor');
-goog.require('vimond.shaka.dash.ModifyableMpdRequest');
+goog.require('shaka.vimond.dash.ModifyableMpdRequest');
 goog.require('shaka.dash.mpd');
 
 /**
@@ -17,29 +17,29 @@ goog.require('shaka.dash.mpd');
  * @param {?shaka.player.DashVideoSource.ContentProtectionCallback} interpretContentProtection A callback to interpret the ContentProtection elements in the MPD.
  * @param {shaka.util.IBandwidthEstimator} estimator
  * @param {shaka.media.IAbrManager} abrManager
- * @param {vimond.shaka.dash.ManifestModificationSetup=} opt_manifestModificationSetup
+ * @param {shaka.vimond.dash.ManifestModificationSetup=} opt_manifestModificationSetup
  *
  * @constructor
  * @struct
  * @extends {shaka.player.DashVideoSource}
  * @exportDoc
  */
-vimond.shaka.player.ModifyableDashVideoSource = function(mpdUrl, interpretContentProtection, estimator, abrManager, opt_manifestModificationSetup) {
+shaka.vimond.player.ModifyableDashVideoSource = function(mpdUrl, interpretContentProtection, estimator, abrManager, opt_manifestModificationSetup) {
     shaka.player.DashVideoSource.call(this, mpdUrl, interpretContentProtection, estimator, abrManager);
-    /** @private {?vimond.shaka.dash.ManifestModificationSetup} */
+    /** @private {?shaka.vimond.dash.ManifestModificationSetup} */
     this.opt_manifestModificationSetup_ = opt_manifestModificationSetup || null;
 };
 
-goog.inherits(vimond.shaka.player.ModifyableDashVideoSource, shaka.player.DashVideoSource);
+goog.inherits(shaka.vimond.player.ModifyableDashVideoSource, shaka.player.DashVideoSource);
 if (shaka.features.Dash) {
-    goog.exportSymbol('vimond.shaka.player.ModifyableDashVideoSource', vimond.shaka.player.ModifyableDashVideoSource);
+    goog.exportSymbol('shaka.vimond.player.ModifyableDashVideoSource', shaka.vimond.player.ModifyableDashVideoSource);
 }
 
 /** @override */
-vimond.shaka.player.ModifyableDashVideoSource.prototype.load = function() {
+shaka.vimond.player.ModifyableDashVideoSource.prototype.load = function() {
     var url = new shaka.util.FailoverUri(this.networkCallback_, [new goog.Uri(this.mpdUrl_)]);
     var mpdRequest =
-        new vimond.shaka.dash.ModifyableMpdRequest(url, this.mpdRequestTimeout, this.opt_manifestModificationSetup_);
+        new shaka.vimond.dash.ModifyableMpdRequest(url, this.mpdRequestTimeout, this.opt_manifestModificationSetup_);
     return mpdRequest.send().then(shaka.util.TypedBind(this,
             /** @param {!shaka.dash.mpd.Mpd} mpd */
             function(mpd) {
@@ -67,9 +67,9 @@ vimond.shaka.player.ModifyableDashVideoSource.prototype.load = function() {
 };
 
 /** @override */
-vimond.shaka.player.ModifyableDashVideoSource.prototype.onUpdateManifest = function(url) {
+shaka.vimond.player.ModifyableDashVideoSource.prototype.onUpdateManifest = function(url) {
     var mpdRequest =
-        new vimond.shaka.dash.ModifyableMpdRequest(url, this.mpdRequestTimeout);
+        new shaka.vimond.dash.ModifyableMpdRequest(url, this.mpdRequestTimeout);
     return mpdRequest.send().then(shaka.util.TypedBind(this,
             /** @param {!shaka.dash.mpd.Mpd} mpd */
             function(mpd) {

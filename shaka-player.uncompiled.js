@@ -26,4 +26,4 @@ goog.require('shaka.polyfill.installAll');
 goog.require('shaka.util.EWMABandwidthEstimator');
 goog.require('shaka.util.FakeEventTarget');
 goog.require('shaka.util.Uint8ArrayUtils');
-goog.require('vimond.shaka.player.ModifyableDashVideoSource');
+goog.require('shaka.vimond.player.ModifyableDashVideoSource');

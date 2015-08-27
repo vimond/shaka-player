@@ -725,7 +725,7 @@ app.loadDashStream = function() {
       app.estimator_);
   var abrManager = new shaka.media.SimpleAbrManager();
   app.load_(
-      new vimond.shaka.player.ModifyableDashVideoSource(
+      new shaka.vimond.player.ModifyableDashVideoSource(
           mediaUrl,
           app.interpretContentProtection_,
           estimator,
