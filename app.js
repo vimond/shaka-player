@@ -118,23 +118,24 @@ app.videoCycleInterval_ = null;
 
 app.extendedConfigurationManager = {
   init: function() {
-    "use strict";
+    'use strict';
     var formElement = document.getElementById('extendedConfiguration');
     var stored = window.localStorage.getItem('extendedConfiguration');
     if (stored) {
       formElement.value = stored;
     }
   },
-  getAndStoreConfiguration: function () {
+  getAndStoreConfiguration: function() {
+    'use strict';
     var configuration, formElement = document.getElementById('extendedConfiguration');
     window.localStorage.setItem('extendedConfiguration', formElement.value);
     try {
       configuration = JSON.parse(formElement.value.replace(/\/\*(.|[\r\n])*\*\//gm, ''));
-    } catch(e) {
+    } catch (e) {
       console.error('Invalid JSON configuration string specified', e);
     }
     return configuration;
-  } 
+  }
 };
 
 
