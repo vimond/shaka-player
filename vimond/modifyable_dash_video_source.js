@@ -18,6 +18,7 @@ goog.require('shaka.vimond.dash.ManifestModificationSetup');
  * @param {?shaka.player.DashVideoSource.ContentProtectionCallback} interpretContentProtection A callback to interpret the ContentProtection elements in the MPD.
  * @param {shaka.util.IBandwidthEstimator} estimator
  * @param {shaka.media.IAbrManager} abrManager
+ * @param {?function(number)} availabilityStartTimeReady A callback providing the parsed MPD's availabilityStartTime to the consumer, for computing absolute times.
  * @param {shaka.vimond.dash.ManifestModificationSetup=} opt_manifestModificationSetup
  *
  * @constructor
@@ -25,10 +26,12 @@ goog.require('shaka.vimond.dash.ManifestModificationSetup');
  * @extends {shaka.player.DashVideoSource}
  * @exportDoc
  */
-shaka.vimond.player.ModifyableDashVideoSource = function(mpdUrl, interpretContentProtection, estimator, abrManager, opt_manifestModificationSetup) {
+shaka.vimond.player.ModifyableDashVideoSource = function(mpdUrl, interpretContentProtection, estimator, abrManager, availabilityStartTimeReady, opt_manifestModificationSetup) {
     shaka.player.DashVideoSource.call(this, mpdUrl, interpretContentProtection, estimator, abrManager);
     /** @private {?shaka.vimond.dash.ManifestModificationSetup} */
     this.opt_manifestModificationSetup_ = opt_manifestModificationSetup || null;
+    /** @private {?function(number)} */
+    this.availabilityStartTimeReady_ = availabilityStartTimeReady;
 };
 
 goog.inherits(shaka.vimond.player.ModifyableDashVideoSource, shaka.player.DashVideoSource);
@@ -62,6 +65,14 @@ shaka.vimond.player.ModifyableDashVideoSource.prototype.load = function() {
                 var baseClassLoad = shaka.player.StreamVideoSource.prototype.load;
                 var p = baseClassLoad.call(this);
 
+                try {
+                    if (this.availabilityStartTimeReady_ && mpd.availabilityStartTime) {
+                        this.availabilityStartTimeReady_(mpd.availabilityStartTime);
+                    }
+                } catch(e) {
+                    shaka.log.warning('mpdReady callback failed.', e);
+                }
+                
                 return p;
             })
     );

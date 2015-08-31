@@ -729,7 +729,7 @@ app.loadDashStream = function() {
           mediaUrl,
           app.interpretContentProtection_,
           estimator,
-          abrManager, extendedConfig && extendedConfig.manifestModifier));
+          abrManager, null, extendedConfig && extendedConfig.manifestModifier));
 };
 
 
