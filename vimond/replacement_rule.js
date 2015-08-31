@@ -25,3 +25,4 @@ shaka.vimond.dash.ReplacementRule = function(match, replacement, opt_options) {
     /** @public {string} */
     this.replacement = replacement;
 };
+goog.exportSymbol('shaka.vimond.dash.ReplacementRule', shaka.vimond.dash.ReplacementRule);

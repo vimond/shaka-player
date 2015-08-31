@@ -10,6 +10,7 @@ goog.require('shaka.player.DashVideoSource');
 goog.require('shaka.dash.MpdProcessor');
 goog.require('shaka.vimond.dash.ModifyableMpdRequest');
 goog.require('shaka.dash.mpd');
+goog.require('shaka.vimond.dash.ManifestModificationSetup');
 
 /**
  * Creates a DashVideoSource where the manifest can be modified.
@@ -69,7 +70,7 @@ shaka.vimond.player.ModifyableDashVideoSource.prototype.load = function() {
 /** @override */
 shaka.vimond.player.ModifyableDashVideoSource.prototype.onUpdateManifest = function(url) {
     var mpdRequest =
-        new shaka.vimond.dash.ModifyableMpdRequest(url, this.mpdRequestTimeout);
+        new shaka.vimond.dash.ModifyableMpdRequest(url, this.mpdRequestTimeout, this.opt_manifestModificationSetup_);
     return mpdRequest.send().then(shaka.util.TypedBind(this,
             /** @param {!shaka.dash.mpd.Mpd} mpd */
             function(mpd) {

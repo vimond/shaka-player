@@ -22,3 +22,4 @@ shaka.vimond.dash.ManifestModificationSetup = function(opt_replacements, opt_pre
     /** @public {?string} */ 
     this.presentationTimeOffsetFixPolicy = opt_presentationTimeOffsetFixPolicy || null;
 };
+goog.exportSymbol('shaka.vimond.dash.ManifestModificationSetup', shaka.vimond.dash.ManifestModificationSetup);
