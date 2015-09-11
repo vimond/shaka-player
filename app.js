@@ -983,7 +983,14 @@ app.initPlayer_ = function() {
 app.onPlayerError_ = function(event) {
   console.error('Player error', event);
 };
-
+/**
+ * 
+ * @param {shaka.player.DrmInfo.LicenseRequestInfo} info
+ * @private
+ */
+app.licensePreProcessor_ = function(info) {
+  info.headers = { 'Content-Type': 'application/octet-stream' };
+};
 
 /**
  * Called to interpret ContentProtection elements from the MPD.
@@ -1060,7 +1067,8 @@ app.interpretContentProtection_ = function(schemeIdUri, contentProtection) {
         wvLicenseServerUrlOverride || '//widevine-proxy.appspot.com/proxy';
     return [{
       'keySystem': 'com.widevine.alpha',
-      'licenseServerUrl': licenseServerUrl
+      'licenseServerUrl': licenseServerUrl,
+      'licensePreProcessor': app.licensePreProcessor_
     }];
   }
 
