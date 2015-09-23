@@ -1,5 +1,6 @@
 /**
- * Copyright 2014 Google Inc.
+ * @license
+ * Copyright 2015 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,8 +13,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
- * @fileoverview content_database.js unit tests.
  */
 
 
@@ -202,6 +201,30 @@ describe('ContentDatabase', function() {
           done();
         });
       });
+
+  // Bug #157:
+  it('stores a stream with an explicit end time', function(done) {
+    var references = [
+      new shaka.media.SegmentReference(0, 100, createFailover(url))
+    ];
+    var index = new shaka.media.SegmentIndex(references);
+    streamInfo.segmentIndexSource = {
+      create: function() { return Promise.resolve(index); }
+    };
+    p.then(function() {
+      return writer.insertStream_(streamInfo, index, testInitData, 1, 0);
+    }).then(function(streamId) {
+      return reader.retrieveStreamIndex(streamId);
+    }).then(function(streamIndex) {
+      expect(streamIndex.references.length).toEqual(1);
+      expect(streamIndex.references[0]).toMatchReference(
+          { start_time: 0, end_time: 100 });
+      done();
+    }).catch(function(err) {
+      fail(err);
+      done();
+    });
+  });
 
   it('throws an error when trying to store an invalid stream', function(done) {
     p.then(function() {

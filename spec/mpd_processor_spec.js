@@ -1,5 +1,6 @@
 /**
- * Copyright 2014 Google Inc.
+ * @license
+ * Copyright 2015 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,8 +13,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
- * @fileoverview mpd_processor.js unit tests.
  */
 
 goog.require('shaka.dash.MpdProcessor');
@@ -364,13 +363,17 @@ describe('MpdProcessor', function() {
     });
 
     it('SegmentTimeline w/ start times', function(done) {
+      // A non-zero PTO should affect the segment URLs but not the segments'
+      // start and end times.
+      var pto = 9000;
+
       var tp1 = new mpd.SegmentTimePoint();
-      tp1.startTime = 9000 * 100;
+      tp1.startTime = 9000 * 100 + pto;
       tp1.duration = 9000 * 10;
       tp1.repeat = 1;
 
       var tp2 = new mpd.SegmentTimePoint();
-      tp2.startTime = (9000 * 100) + (9000 * 20);
+      tp2.startTime = (9000 * 100) + (9000 * 20) + pto;
       tp2.duration = 9000 * 20;
       tp2.repeat = 0;
 
@@ -379,7 +382,7 @@ describe('MpdProcessor', function() {
       timeline.timePoints.push(tp2);
 
       st.timescale = 9000;
-      st.presentationTimeOffset = 0;
+      st.presentationTimeOffset = pto;
       st.segmentDuration = null;
       st.startNumber = 10;
       st.mediaUrlTemplate = '$Number$-$Time$-$Bandwidth$-media.mp4';
@@ -417,17 +420,17 @@ describe('MpdProcessor', function() {
 
         checkReference(
             references1[0],
-            'http://example.com/10-900000-250000-media.mp4',
+            'http://example.com/10-909000-250000-media.mp4',
             100, 110);
 
         checkReference(
             references1[1],
-            'http://example.com/11-990000-250000-media.mp4',
+            'http://example.com/11-999000-250000-media.mp4',
             110, 120);
 
         checkReference(
             references1[2],
-            'http://example.com/12-1080000-250000-media.mp4',
+            'http://example.com/12-1089000-250000-media.mp4',
             120, 140);
 
         done();
@@ -774,6 +777,126 @@ describe('MpdProcessor', function() {
     afterAll(function() {
       // Restore isTypeSupported.
       shaka.player.Player.isTypeSupported = originalIsTypeSupported;
+    });
+
+    describe('creates StreamSetInfos from multiple AdaptationSets', function() {
+      var m;
+      var p;
+      var as1;
+      var as2;
+      var r1;
+      var r2;
+      var st1;
+      var st2;
+
+      beforeEach(function() {
+        m = new mpd.Mpd();
+        p = new mpd.Period();
+        as1 = new mpd.AdaptationSet();
+        as2 = new mpd.AdaptationSet();
+        r1 = new mpd.Representation();
+        r2 = new mpd.Representation();
+        st1 = new mpd.SegmentTemplate();
+        st2 = new mpd.SegmentTemplate();
+
+        r1.segmentTemplate = st1;
+        r1.baseUrl = [new goog.Uri('http://example.com')];
+        r1.bandwidth = 250000;
+
+        r2.segmentTemplate = st2;
+        r2.baseUrl = [new goog.Uri('http://example.com')];
+        r2.bandwidth = 500000;
+
+        as1.representations.push(r1);
+        as2.representations.push(r2);
+
+        p.start = 0;
+        p.adaptationSets.push(as1);
+        p.adaptationSets.push(as2);
+
+        m.periods.push(p);
+        m.url = [new goog.Uri('http://example.com/mpd')];
+      });
+
+      it('by merging ones with the same type, group, and language', function() {
+        as1.contentType = 'video';
+        as2.contentType = 'video';
+        as1.group = 1;
+        as2.group = 1;
+        as1.lang = 'en-US';
+        as2.lang = 'en-US';
+
+        r1.mimeType = 'video/mp4';
+        r2.mimeType = 'video/mp4';
+
+        var periodInfo = processor.process(m).periodInfos[0];
+        expect(periodInfo.streamSetInfos.length).toBe(1);
+        expect(periodInfo.streamSetInfos[0].contentType).toBe('video');
+        expect(periodInfo.streamSetInfos[0].lang).toBe('en-US');
+      });
+
+      it('by separating ones with different types', function() {
+        as1.contentType = 'audio';
+        as2.contentType = 'video';
+        as1.group = 1;
+        as2.group = 1;
+        as1.lang = 'en-US';
+        as2.lang = 'en-US';
+
+        r1.mimeType = 'audio/mp4';
+        r2.mimeType = 'video/mp4';
+
+        var periodInfo = processor.process(m).periodInfos[0];
+        expect(periodInfo.streamSetInfos.length).toBe(2);
+
+        expect(periodInfo.streamSetInfos[0].contentType).toBe('audio');
+        expect(periodInfo.streamSetInfos[0].lang).toBe('en-US');
+
+        expect(periodInfo.streamSetInfos[1].contentType).toBe('video');
+        expect(periodInfo.streamSetInfos[1].lang).toBe('en-US');
+      });
+
+      it('by separating ones with different groups', function() {
+        as1.contentType = 'audio';
+        as2.contentType = 'audio';
+        as1.group = 1;
+        as2.group = 2;
+        as1.lang = 'en-US';
+        as2.lang = 'en-US';
+
+        r1.mimeType = 'audio/mp4';
+        r2.mimeType = 'audio/mp4';
+
+        var periodInfo = processor.process(m).periodInfos[0];
+        expect(periodInfo.streamSetInfos.length).toBe(2);
+
+        expect(periodInfo.streamSetInfos[0].contentType).toBe('audio');
+        expect(periodInfo.streamSetInfos[0].lang).toBe('en-US');
+
+        expect(periodInfo.streamSetInfos[1].contentType).toBe('audio');
+        expect(periodInfo.streamSetInfos[1].lang).toBe('en-US');
+      });
+
+      it('by separating ones with different languages', function() {
+        as1.contentType = 'audio';
+        as2.contentType = 'audio';
+        as1.group = 1;
+        as2.group = 1;
+        as1.lang = 'en-US';
+        as2.lang = 'fr';
+
+        r1.mimeType = 'audio/mp4';
+        r2.mimeType = 'audio/mp4';
+
+        var periodInfo = processor.process(m).periodInfos[0];
+        expect(periodInfo.streamSetInfos.length).toBe(2);
+
+        expect(periodInfo.streamSetInfos[0].contentType).toBe('audio');
+        expect(periodInfo.streamSetInfos[0].lang).toBe('en-US');
+
+        expect(periodInfo.streamSetInfos[1].contentType).toBe('audio');
+        expect(periodInfo.streamSetInfos[1].lang).toBe('fr');
+      });
     });
 
     describe('SegmentTemplate', function() {

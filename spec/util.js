@@ -1,5 +1,6 @@
 /**
- * Copyright 2014 Google Inc.
+ * @license
+ * Copyright 2015 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,8 +13,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
- * @fileoverview Utility functions for unit tests.
  */
 
 goog.require('shaka.asserts');
@@ -375,6 +374,45 @@ function waitForMovement(video, eventManager) {
 
 
 /**
+ * Waits for a callback function to succeed using a poll.
+ *
+ * @param {number} timeout in seconds
+ * @param {function(): boolean} callback
+ * @param {function(!Error)=} opt_timeoutCallback
+ * @return {!Promise}
+ */
+function waitFor(timeout, callback, opt_timeoutCallback) {
+  var promise = new shaka.util.PublicPromise();
+  var stack = (new Error('stacktrace')).stack.split('\n').slice(1).join('\n');
+  var pollId;
+
+  var timeoutId = window.setTimeout(function() {
+    window.clearInterval(pollId);
+
+    // Reject the promise, but replace the error's stack with the original
+    // call stack.  This timeout handler's stack is not helpful.
+    var error = new Error('Timeout waiting for callback');
+    error.stask = stack;
+
+    if (opt_timeoutCallback)
+      opt_timeoutCallback(error);
+
+    promise.reject(error);
+  }, timeout * 1000);
+
+  pollId = window.setInterval(function() {
+    if (callback()) {
+      window.clearInterval(pollId);
+      window.clearTimeout(timeoutId);
+
+      promise.resolve();
+    }
+  }, 100);
+  return promise;
+}
+
+
+/**
  * @param {!HTMLMediaElement} video The playing video.
  * @param {!shaka.util.EventManager} eventManager
  * @param {number} targetTime in seconds
@@ -420,41 +458,29 @@ function waitForTargetTime(video, eventManager, targetTime, timeout) {
  *     |targetTime| seconds of data.
  */
 function waitUntilBuffered(sourceBuffer, targetTime, timeout) {
-  var promise = new shaka.util.PublicPromise;
-  var stack = (new Error('stacktrace')).stack.split('\n').slice(1).join('\n');
+  return waitFor(timeout, function() {
+    var buffered = sourceBuffer.buffered;
 
-  var pollIntervalId;
-
-  var timeoutId = window.setTimeout(function() {
+    // If there is nothing buffered, then it may be 0.  Simply wait until
+    // it gets buffered.
+    expect(buffered.length).toBeLessThan(2);
+    if (buffered.length == 1) {
+      var secondsBuffered = buffered.end(0) - buffered.start(0);
+      return secondsBuffered > targetTime;
+    } else {
+      return false;
+    }
+  }, function(error) {
     var buffered = sourceBuffer.buffered;
     expect(buffered.length).toBe(1);
+
     var secondsBuffered = buffered.end(0) - buffered.start(0);
     // This expectation will fail, but will provide specific values to
     // Jasmine to help us debug timeout issues.
     expect(secondsBuffered).toBeGreaterThan(targetTime);
-    window.clearInterval(pollIntervalId);
-    // Reject the promise, but replace the error's stack with the original
-    // call stack.  This timeout handler's stack is not helpful.
-    var error = new Error('Timeout waiting for buffered ' + targetTime);
-    error.stack = stack;
-    promise.reject(error);
-  }, timeout * 1000);
 
-  pollIntervalId = window.setInterval(function() {
-    var buffered = sourceBuffer.buffered;
-    expect(buffered.length).toBe(1);
-    var secondsBuffered = buffered.end(0) - buffered.start(0);
-    if (secondsBuffered > targetTime) {
-      // This expectation will pass, but will keep Jasmine from complaining
-      // about tests which have no expectations.  In practice, some tests
-      // only need to demonstrate that they have reached a certain target.
-      expect(secondsBuffered).toBeGreaterThan(targetTime);
-      window.clearTimeout(timeoutId);
-      window.clearInterval(pollIntervalId);
-      promise.resolve();
-    }
-  }, 1000);
-  return promise;
+    error.message = 'Timeout waiting for buffered ' + targetTime;
+  });
 }
 
 

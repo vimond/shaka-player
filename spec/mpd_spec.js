@@ -1,5 +1,6 @@
 /**
- * Copyright 2014 Google Inc.
+ * @license
+ * Copyright 2015 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,8 +13,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
- * @fileoverview mpd_parser.js unit tests.
  */
 
 goog.require('shaka.dash.mpd');
@@ -470,22 +469,6 @@ describe('mpd', function() {
         expect(groups[i] != groups[j]).toBe(true);
       }
     }
-  });
-
-  it('parses namespaced elements', function() {
-    var source = [
-      '<MPD>',
-      '  <Period id="1" duration="PT0H3M1.63S" start="PT0S">',
-      '    <AdaptationSet id="1" lang="fr" contentType="audio">',
-      '      <ContentProtection schemeIdUri="com.bogus">',
-      '        <prefix:TagName keyid="0" key="1"/>',
-      '      </ContentProtection>',
-      '    </AdaptationSet>',
-      '  </Period>',
-      '</MPD>'].join('\n');
-
-    var mpd = shaka.dash.mpd.parseMpd(source, createFailover('').urls);
-    expect(mpd).toBeTruthy();
   });
 
   it('defaults startNumber to 1 when missing', function() {

@@ -1,5 +1,6 @@
 /**
- * Copyright 2014 Google Inc.
+ * @license
+ * Copyright 2015 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,12 +13,13 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
- * @fileoverview Implements the application layer of the test application.
  */
 
 
-/** @class */
+/**
+ * The application layer of the test application.
+ * @class
+ */
 var app = function() {};
 
 
@@ -213,6 +215,11 @@ app.init = function() {
           }
           app.addOfflineStream_(value, id);
         }
+
+        if ('offline' in params) {
+          app.loadStream();
+          app.onStreamTypeChange();
+        }
       }
   ).catch(
       function(e) {
@@ -239,6 +246,9 @@ app.init = function() {
   } else if ('http' in params) {
     document.getElementById('streamTypeList').value = 'http';
     app.loadStream();
+  } else if ('offline' in params) {
+    document.getElementById('streamTypeList').value = 'offline';
+    // loadStream() deferred until group IDs loaded
   }
   app.onStreamTypeChange();
 
@@ -966,6 +976,7 @@ app.initPlayer_ = function() {
       playerControls.onBuffering.bind(null, false));
   app.player_.addEventListener('seekrangechanged',
       playerControls.onSeekRangeChanged);
+  app.player_.addEventListener('trackschanged', app.displayMetadata_);
 
   app.estimator_ = new shaka.util.EWMABandwidthEstimator();
   playerControls.setPlayer(app.player_);
@@ -995,7 +1006,7 @@ app.licensePreProcessor_ = function(info) {
 /**
  * Called to interpret ContentProtection elements from the MPD.
  * @param {!string} schemeIdUri
- * @param {!Node} contentProtection The ContentProtection XML element.
+ * @param {!Element} contentProtection The ContentProtection XML element.
  * @return {Array.<shaka.player.DrmInfo.Config>}
  * @private
  */
@@ -1026,7 +1037,7 @@ app.interpretContentProtection_ = function(schemeIdUri, contentProtection) {
       k: Uint8ArrayUtils.toBase64(key, false)
     };
     var jwkSet = {keys: [keyObj]};
-    var license = JSON.stringify(jwkSet);
+    license = JSON.stringify(jwkSet);
     var initData = {
       'initData': keyid,
       'initDataType': 'webm'
