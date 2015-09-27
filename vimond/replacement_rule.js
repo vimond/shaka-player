@@ -18,11 +18,11 @@ goog.provide('shaka.vimond.dash.ReplacementRule');
 shaka.vimond.dash.ReplacementRule = function(match, replacement, opt_options) {
     'use strict';
 
-    /** @public {RegExp|string} */
+    /** @public */
     this.match = match;
-    /** @public {?string} */
+    /** @public */
     this.options = opt_options || null;
-    /** @public {string} */
+    /** @public  */
     this.replacement = replacement;
 };
 goog.exportSymbol('shaka.vimond.dash.ReplacementRule', shaka.vimond.dash.ReplacementRule);

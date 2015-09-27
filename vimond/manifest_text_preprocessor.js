@@ -4,10 +4,10 @@
  * @fileoverview Processes a MPD manifest as text content, manipulating it according to configured rules.
  */
 
-goog.provide('shaka.vimond.dash.ManifestModifier');
+goog.provide('shaka.vimond.dash.ManifestTextPreprocessor');
 
-/**
- * Creates an ManifestModifier with a ruleset/configuration for modifications to be applied.
+/**F
+ * Creates an ManifestTextPreprocessor with a ruleset/configuration for modifications to be applied.
  *
  * @param {shaka.vimond.dash.ManifestModificationSetup=} opt_modificationSetup
  *
@@ -15,7 +15,7 @@ goog.provide('shaka.vimond.dash.ManifestModifier');
  * @struct
  * @exportDoc
  */
-shaka.vimond.dash.ManifestModifier = function(opt_modificationSetup) {
+shaka.vimond.dash.ManifestTextPreprocessor = function(opt_modificationSetup) {
     /** @private {?shaka.vimond.dash.ManifestModificationSetup} */
     this.modificationSetup_ = opt_modificationSetup || null;
 };
@@ -49,7 +49,7 @@ manifestModifier: {
  * @param {string|ArrayBuffer|null} manifest
  * @return {string}
  */
-shaka.vimond.dash.ManifestModifier.prototype.process = function(manifest) {
+shaka.vimond.dash.ManifestTextPreprocessor.prototype.process = function(manifest) {
     if (typeof manifest === 'string' && this.modificationSetup_) {
         var replacements = this.modificationSetup_.replacements;
         if (replacements) {

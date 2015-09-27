@@ -8,7 +8,7 @@ goog.provide('shaka.vimond.player.ModifyableDashVideoSource');
 
 goog.require('shaka.player.DashVideoSource');
 goog.require('shaka.dash.MpdProcessor');
-goog.require('shaka.vimond.dash.ModifyableMpdRequest');
+goog.require('shaka.vimond.dash.PreprocessableMpdRequest');
 goog.require('shaka.dash.mpd');
 goog.require('shaka.vimond.dash.ManifestModificationSetup');
 
@@ -43,7 +43,7 @@ if (shaka.features.Dash) {
 shaka.vimond.player.ModifyableDashVideoSource.prototype.load = function() {
     var url = new shaka.util.FailoverUri(this.networkCallback_, [new goog.Uri(this.mpdUrl_)]);
     var mpdRequest =
-        new shaka.vimond.dash.ModifyableMpdRequest(url, this.mpdRequestTimeout, this.opt_manifestModificationSetup_);
+        new shaka.vimond.dash.PreprocessableMpdRequest(url, this.mpdRequestTimeout, this.opt_manifestModificationSetup_);
     return mpdRequest.send().then(shaka.util.TypedBind(this,
             /** @param {!shaka.dash.mpd.Mpd} mpd */
             function(mpd) {
@@ -81,7 +81,7 @@ shaka.vimond.player.ModifyableDashVideoSource.prototype.load = function() {
 /** @override */
 shaka.vimond.player.ModifyableDashVideoSource.prototype.onUpdateManifest = function(url) {
     var mpdRequest =
-        new shaka.vimond.dash.ModifyableMpdRequest(url, this.mpdRequestTimeout, this.opt_manifestModificationSetup_);
+        new shaka.vimond.dash.PreprocessableMpdRequest(url, this.mpdRequestTimeout, this.opt_manifestModificationSetup_);
     return mpdRequest.send().then(shaka.util.TypedBind(this,
             /** @param {!shaka.dash.mpd.Mpd} mpd */
             function(mpd) {

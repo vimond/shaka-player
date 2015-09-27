@@ -16,10 +16,10 @@ goog.provide('shaka.vimond.dash.ManifestModificationSetup');
  */
 shaka.vimond.dash.ManifestModificationSetup = function(opt_replacements, opt_presentationTimeOffsetFixPolicy) {
     'use strict';    
-    /** @public {?Array<shaka.vimond.dash.ReplacementRule>} */
+    /** @public */
     this.replacements = opt_replacements || null;
 
-    /** @public {?string} */ 
+    /** @public */ 
     this.presentationTimeOffsetFixPolicy = opt_presentationTimeOffsetFixPolicy || null;
 };
 goog.exportSymbol('shaka.vimond.dash.ManifestModificationSetup', shaka.vimond.dash.ManifestModificationSetup);
