@@ -1013,7 +1013,7 @@ app.licensePreProcessor_ = function(info) {
 app.interpretContentProtection_ = function(schemeIdUri, contentProtection) {
   var Uint8ArrayUtils = shaka.util.Uint8ArrayUtils;
 
-  var wvLicenseServerUrlOverride =
+  var licenseServerUrlOverride =
       document.getElementById('wvLicenseServerUrlInput').value || null;
 
   if (schemeIdUri == 'com.youtube.clearkey') {
@@ -1058,7 +1058,7 @@ app.interpretContentProtection_ = function(schemeIdUri, contentProtection) {
       var child = contentProtection.childNodes[i];
       if (child.nodeName == 'yt:SystemURL' &&
           child.getAttribute('type') == 'widevine') {
-        licenseServerUrl = wvLicenseServerUrlOverride || child.textContent;
+        licenseServerUrl = licenseServerUrlOverride || child.textContent;
         break;
       }
     }
@@ -1075,7 +1075,7 @@ app.interpretContentProtection_ = function(schemeIdUri, contentProtection) {
       'urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed') {
     // This is the UUID which represents Widevine in the edash-packager.
     var licenseServerUrl =
-        wvLicenseServerUrlOverride || '//widevine-proxy.appspot.com/proxy';
+        licenseServerUrlOverride || '//widevine-proxy.appspot.com/proxy';
     return [{
       'keySystem': 'com.widevine.alpha',
       'licenseServerUrl': licenseServerUrl,
@@ -1083,6 +1083,17 @@ app.interpretContentProtection_ = function(schemeIdUri, contentProtection) {
     }];
   }
 
+  if (schemeIdUri.toLowerCase() == 'urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95') {
+    console.log('PlayReady content protection data found.');
+    var licenseServerUrl =
+        licenseServerUrlOverride;
+    return [{
+      'keySystem': 'com.microsoft.playready',
+      'licenseServerUrl': licenseServerUrl,
+      'licensePreProcessor': app.licensePreProcessor_
+    }];
+  }
+  
   if (schemeIdUri == 'urn:mpeg:dash:mp4protection:2011') {
     // Ignore without a warning.
     return null;
