@@ -31,6 +31,12 @@ shaka.vimond.dash.PreprocessableMpdRequest = function(url, opt_requestTimeout, o
     this.manifestTextPreprocessor_ = new shaka.vimond.dash.ManifestTextPreprocessor(opt_modificationSetup);
     /** @private {?shaka.vimond.dash.ManifestModificationSetup} */
     this.modificationSetup_ = opt_modificationSetup || null;
+    this.presentationTimeOffsetFixMethod_ = null;
+    if (this.modificationSetup_ && this.modificationSetup_.presentationTimeOffsetFixPolicy) {
+        this.presentationTimeOffsetFixMethod_ = this.modificationSetup_.presentationTimeOffsetFixPolicy == 'highest' ? this.findHighestOffset_ :
+            (this.modificationSetup_.presentationTimeOffsetFixPolicy == 'lowest' ? this.findLowestOffset_ : this.findFirstOffsetWithVideo_);  
+    }
+
 };
 
 goog.inherits(shaka.vimond.dash.PreprocessableMpdRequest, shaka.dash.MpdRequest);
@@ -57,9 +63,9 @@ shaka.vimond.dash.PreprocessableMpdRequest.prototype.send = function() {
  */
 shaka.vimond.dash.PreprocessableMpdRequest.prototype.applyPresentationTimeOffsetFix_ = function(mpd) {
     "use strict";
-    if (mpd.type === 'static' && mpd.periods && this.modificationSetup_ && this.modificationSetup_.presentationTimeOffsetFixPolicy && this.modificationSetup_.presentationTimeOffsetFixPolicy == 'firstVideo') {
-        mpd.periods.forEach(function(/** {shaka.dash.mpd.Period} */ period) {
-            var offset = this.findFirstOffsetWithVideo_(period);
+    if (mpd.type === 'static' && mpd.periods && this.presentationTimeOffsetFixMethod_) {
+        mpd.periods.forEach(function(/** @type {shaka.dash.mpd.Period} */ period) {
+            var offset = this.presentationTimeOffsetFixMethod_(period);
             try {
                 if (offset > 0) {
                     shaka.log.info('Found missing presentationTimeOffset from segment start offset, based on the configured ' + this.modificationSetup_.presentationTimeOffsetFixPolicy + ' policy.', offset);
@@ -95,7 +101,7 @@ shaka.vimond.dash.PreprocessableMpdRequest.prototype.findFirstOffsetWithVideo_ =
     'use strict';
     var videoOffset = 0;
     try {
-        period.adaptationSets.forEach(function(/** {shaka.dash.mpd.AdaptationSet} */ as) {
+        period.adaptationSets.forEach(function(/** @type {shaka.dash.mpd.AdaptationSet} */ as) {
             var st = as.segmentTemplate;
             if (st && !st.presentationTimeOffset) {
                 var firstSegment = st.timeline && st.timeline.timePoints && st.timeline.timePoints[0];
@@ -113,3 +119,44 @@ shaka.vimond.dash.PreprocessableMpdRequest.prototype.findFirstOffsetWithVideo_ =
     }
     return videoOffset;
 };
+
+shaka.vimond.dash.PreprocessableMpdRequest.prototype.findLowestOffset_ = function(period) {
+    'use strict';
+    var lowestOffset = 0;
+    try {
+        period.adaptationSets.forEach(function (/** @type {shaka.dash.mpd.AdaptationSet} */ as) {
+            var st = as.segmentTemplate;
+            if (st && !st.presentationTimeOffset) {
+                var firstSegment = st.timeline && st.timeline.timePoints && st.timeline.timePoints[0];
+                if (firstSegment.startTime) {
+                    var offset = firstSegment.startTime / (st.timescale || 1);
+                    lowestOffset = lowestOffset === 0 ? offset : Math.min(lowestOffset, offset);
+                }
+            }
+        });
+    } catch(e) {
+        shaka.log.warning('Error when searching for lowest start offset.', e);
+    }
+    return lowestOffset;
+};
+
+shaka.vimond.dash.PreprocessableMpdRequest.prototype.findHighestOffset_ = function(period) {
+    'use strict';
+    var highestOffset = 0;
+    try {
+        period.adaptationSets.forEach(function (/** @type {shaka.dash.mpd.AdaptationSet} */ as) {
+            var st = as.segmentTemplate;
+            if (st && !st.presentationTimeOffset) {
+                var firstSegment = st.timeline && st.timeline.timePoints && st.timeline.timePoints[0];
+                if (firstSegment.startTime) {
+                    var offset = firstSegment.startTime / (st.timescale || 1);
+                    highestOffset = Math.max(highestOffset, offset);
+                }
+            }
+        });
+    } catch(e) {
+        shaka.log.warning('Error when searching for highest start offset.', e);
+    }
+    return highestOffset;
+};
+
