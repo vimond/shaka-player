@@ -234,12 +234,17 @@ app.init = function() {
   if ('asset' in params) {
     document.getElementById('manifestUrlInput').value = params['asset'];
     app.onMpdCustom();
+  } else if(localStorage.getItem('shakaManifestUrl')) {
+    document.getElementById('manifestUrlInput').value = localStorage.getItem('shakaManifestUrl');
+    app.onMpdCustom();
   }
   if ('license' in params) {
-    document.getElementById('wvLicenseServerUrlInput').value =
+    document.getElementById('customLicenseServerUrlInput').value =
         params['license'];
+  } else {
+    document.getElementById('customLicenseServerUrlInput').value = localStorage.getItem('shakaLicenseUrl') || '';
   }
-
+  
   if ('dash' in params) {
     document.getElementById('streamTypeList').value = 'dash';
     app.loadStream();
@@ -677,6 +682,8 @@ app.loadStream = function() {
   } else {
     app.loadOfflineStream();
   }
+  localStorage.setItem('shakaLicenseUrl', document.getElementById('customLicenseServerUrlInput').value);
+  localStorage.setItem('shakaManifestUrl', document.getElementById('manifestUrlInput').value);
 };
 
 
@@ -1014,7 +1021,7 @@ app.interpretContentProtection_ = function(schemeIdUri, contentProtection) {
   var Uint8ArrayUtils = shaka.util.Uint8ArrayUtils;
 
   var licenseServerUrlOverride =
-      document.getElementById('wvLicenseServerUrlInput').value || null;
+      document.getElementById('customLicenseServerUrlInput').value || null;
 
   if (schemeIdUri == 'com.youtube.clearkey') {
     // This is the scheme used by YouTube's MediaSource demo.
