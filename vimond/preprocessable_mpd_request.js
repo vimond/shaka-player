@@ -136,6 +136,7 @@ shaka.vimond.dash.PreprocessableMpdRequest.prototype.findLowestOffset_ = functio
         });
     } catch(e) {
         shaka.log.warning('Error when searching for lowest start offset.', e);
+        return 0;
     }
     return lowestOffset;
 };
@@ -156,6 +157,7 @@ shaka.vimond.dash.PreprocessableMpdRequest.prototype.findHighestOffset_ = functi
         });
     } catch(e) {
         shaka.log.warning('Error when searching for highest start offset.', e);
+        return 0;
     }
     return highestOffset;
 };
