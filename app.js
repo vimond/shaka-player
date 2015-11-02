@@ -56,14 +56,6 @@ app.bufferedBehindDebug_ = null;
 
 
 /**
- * True if the aspect ratio has been set for this playback.
- *
- * @private {boolean}
- */
-app.aspectRatioSet_ = false;
-
-
-/**
  * The player object owned by the app.
  *
  * @private {shaka.player.Player}
@@ -79,14 +71,6 @@ app.player_ = null;
  * @private {shaka.util.IBandwidthEstimator}
  */
 app.estimator_ = null;
-
-
-/**
- * True if polyfills have been installed.
- *
- * @private {boolean}
- */
-app.polyfillsInstalled_ = false;
 
 
 /**
@@ -139,6 +123,14 @@ app.extendedConfigurationManager = {
     return configuration;
   }
 };
+
+
+/**
+ * State of the stream currently playing.
+ * @type {appUtils.StreamState}
+ * @private
+ */
+app.streamState_ = {'manifest': '', 'time': 0};
 
 
 /**
@@ -273,6 +265,32 @@ app.init = function() {
 
 
 /**
+ * Switches a locally playing stream to cast.
+ */
+app.switchStreamToCast = function() {
+  // Stream has already been loaded into the player.
+  // Only supporting DASH streams.
+  if (app.video_.src && app.streamState_.manifest != '') {
+    app.streamState_.time = app.video_.currentTime;
+    sender.loadStream(app.streamState_);
+    app.player_.unload();
+  }
+};
+
+
+/**
+ * Enables or disabled the stream options.
+ * @param {boolean} enable True to enable stream options.
+ */
+app.enableStreamOptions = function(enable) {
+  var options = document.querySelectorAll('.streamOption');
+  for (var i = 0; i < options.length; ++i) {
+    options[i].disabled = !enable;
+  }
+};
+
+
+/**
  * Called when the stream type is changed.
  */
 app.onStreamTypeChange = function() {
@@ -397,6 +415,7 @@ app.onAudioChange = function(opt_clearBuffer) {
  * Called when a new text track is selected or its enabled state is changed.
  */
 app.onTextChange = function() {
+  if (!app.player_) return;
   var id = document.getElementById('textTracks').value;
   var enabled = document.getElementById('textEnabled').checked;
   app.player_.selectTextTrack(id);
@@ -554,8 +573,11 @@ app.storeStream = function() {
   var offlineSource = new shaka.player.OfflineVideoSource(
       null, estimator, abrManager);
   offlineSource.addEventListener('progress', app.progressEventHandler_);
+  var wvServerUrl = document.getElementById('wvLicenseServerUrlInput').value;
   offlineSource.store(
-      mediaUrl, preferredLanguage, app.interpretContentProtection_,
+      mediaUrl,
+      preferredLanguage,
+      appUtils.interpretContentProtection.bind(null, app.player_, wvServerUrl),
       app.chooseOfflineTracks_.bind(null, offlineSource)
   ).then(
       function(groupId) {
@@ -674,6 +696,11 @@ app.removeOfflineStream_ = function(groupId) {
  * Loads whatever stream type is selected.
  */
 app.loadStream = function() {
+  // Set the cross-origin flag to anonymous to allow loading subtitle tracks
+  // cross-origin, as in the Angel One clip.
+  // TODO: Remove this when subtitles no longer use the track element.
+  app.video_.crossOrigin = 'anonymous';
+
   var type = document.getElementById('streamTypeList').value;
   if (type == 'http') {
     app.loadHttpStream();
@@ -717,6 +744,16 @@ app.loadDashStream = function() {
   }
 
   var mediaUrl = document.getElementById('manifestUrlInput').value;
+  app.streamState_.manifest = mediaUrl;
+  if (sender.state == sender.states.CAST_CONNECTED) {
+    sender.loadStream(app.streamState_);
+  } else {
+    console.assert(app.estimator_);
+    if (app.estimator_.getDataAge() >= 3600) {
+      // Disregard any bandwidth data older than one hour.  The user may have
+      // changed networks if they are on a laptop or mobile device.
+      app.estimator_ = new shaka.util.EWMABandwidthEstimator();
+    }
   var extendedConfig = app.extendedConfigurationManager.getAndStoreConfiguration();
 
   /*
@@ -736,17 +773,28 @@ app.loadDashStream = function() {
     // Disregard any bandwidth data older than one hour.  The user may have
     // changed networks if they are on a laptop or mobile device.
     app.estimator_ = new shaka.util.EWMABandwidthEstimator();
+    var estimator = /** @type {!shaka.util.IBandwidthEstimator} */(
+        app.estimator_);
+    var abrManager = new shaka.media.SimpleAbrManager();
+    var wvServerUrl = document.getElementById('wvLicenseServerUrlInput').value;
+    app.load_(
+        new shaka.player.DashVideoSource(
+            mediaUrl,
+            appUtils.interpretContentProtection.bind(
+                null, app.player_, wvServerUrl),
+            estimator,
+            abrManager));
   }
 
   var estimator = /** @type {!shaka.util.IBandwidthEstimator} */(
       app.estimator_);
   var abrManager = new shaka.media.SimpleAbrManager();
   app.load_(
-      new shaka.vimond.player.ModifyableDashVideoSource(
+      new shaka.player.DashVideoSource(
           mediaUrl,
           app.interpretContentProtection_,
           estimator,
-          abrManager, null, extendedConfig && extendedConfig.manifestModifier));
+          abrManager));
 };
 
 
@@ -770,21 +818,6 @@ app.loadOfflineStream = function() {
 
 
 /**
- * Exceptions thrown in 'then' handlers are not seen until catch.
- * Promises can therefore mask what would otherwise be uncaught exceptions.
- * As a utility to work around this, wrap the function in setTimeout so that
- * it is called outside of the Promise's 'then' handler.
- *
- * @param {function(...)} fn
- * @return {function(...)}
- * @private
- */
-app.breakOutOfPromise_ = function(fn) {
-  return window.setTimeout.bind(window, fn, 0);
-};
-
-
-/**
  * Loads the given video source into the player.
  * @param {!shaka.player.IVideoSource} videoSource
  * @private
@@ -795,7 +828,7 @@ app.load_ = function(videoSource) {
   var preferredLanguage = document.getElementById('preferredLanguage').value;
   app.player_.configure({'preferredLanguage': preferredLanguage});
 
-  app.player_.load(videoSource).then(app.breakOutOfPromise_(
+  app.player_.load(videoSource).then(appUtils.breakOutOfPromise(
       function() {
         app.aspectRatioSet_ = false;
         app.displayMetadata_();
@@ -883,29 +916,12 @@ app.updateDebugInfo_ = function() {
  */
 app.updateVideoResDebug_ = function() {
   console.assert(app.videoResDebug_);
-
-  if (app.aspectRatioSet_ == false) {
-    var aspect = app.video_.videoWidth / app.video_.videoHeight;
-    if (aspect) {
-      // Round off common aspect ratios.
-      if (Math.abs(aspect - (16 / 9)) < 0.01) {
-        aspect = 16 / 9;
-      } else if (Math.abs(aspect - (4 / 3)) < 0.01) {
-        aspect = 4 / 3;
-      }
-
-      // Resize the video container to match the aspect ratio of the media.
-      var h = 576;
-      var w = h * aspect;
-      app.video_.parentElement.style.width = w.toString() + 'px';
-      app.video_.parentElement.style.height = h.toString() + 'px';
-
-      app.aspectRatioSet_ = true;
-    }
+  if (sender.state == sender.states.CAST_CONNECTED) {
+    app.videoResDebug_.textContent = sender.videoResDebug;
+  } else {
+    var debugMsg = appUtils.getVideoResDebug(app.video_);
+    app.videoResDebug_.textContent = debugMsg;
   }
-
-  app.videoResDebug_.textContent =
-      app.video_.videoWidth + ' x ' + app.video_.videoHeight;
 };
 
 
@@ -915,22 +931,14 @@ app.updateVideoResDebug_ = function() {
  */
 app.updateBufferDebug_ = function() {
   console.assert(app.bufferedAheadDebug_ && app.bufferedBehindDebug_);
-
-  var currentTime = app.video_.currentTime;
-  var buffered = app.video_.buffered;
-  var ahead = 0;
-  var behind = 0;
-
-  for (var i = 0; i < buffered.length; ++i) {
-    if (buffered.start(i) <= currentTime && buffered.end(i) >= currentTime) {
-      ahead = buffered.end(i) - currentTime;
-      behind = currentTime - buffered.start(i);
-      break;
-    }
+  if (sender.state == sender.states.CAST_CONNECTED) {
+    app.bufferedAheadDebug_.textContent = sender.bufferedAheadDebug;
+    app.bufferedBehindDebug_.textContent = sender.bufferedBehindDebug;
+  } else {
+    var bufferInfo = appUtils.getBufferDebug(app.video_);
+    app.bufferedAheadDebug_.textContent = bufferInfo[0];
+    app.bufferedBehindDebug_.textContent = bufferInfo[1];
   }
-
-  app.bufferedAheadDebug_.textContent = Math.round(ahead) + ' seconds';
-  app.bufferedBehindDebug_.textContent = Math.round(behind) + ' seconds';
 };
 
 
@@ -939,9 +947,6 @@ app.updateBufferDebug_ = function() {
  * @private
  */
 app.installPolyfills_ = function() {
-  if (app.polyfillsInstalled_)
-    return;
-
   var forcePrefixedElement = document.getElementById('forcePrefixed');
   var forcePrefixed = forcePrefixedElement.checked;
 
@@ -949,16 +954,7 @@ app.installPolyfills_ = function() {
   forcePrefixedElement.disabled = true;
   forcePrefixedElement.title = 'EME choice locked in for this browser session.';
 
-  if (forcePrefixed) {
-    window['MediaKeys'] = null;
-    window['MediaKeySession'] = null;
-    HTMLMediaElement.prototype['setMediaKeys'] = null;
-    Navigator.prototype['requestMediaKeySystemAccess'] = null;
-  }
-
-  shaka.polyfill.installAll();
-
-  app.polyfillsInstalled_ = true;
+  appUtils.installPolyfills(forcePrefixed);
 };
 
 

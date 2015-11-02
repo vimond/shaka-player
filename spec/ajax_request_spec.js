@@ -17,8 +17,8 @@
 
 goog.require('shaka.media.SegmentIndex');
 goog.require('shaka.media.SegmentReference');
-goog.require('shaka.player.DrmSchemeInfo');
 goog.require('shaka.util.AjaxRequest');
+goog.require('shaka.util.ContentDatabaseReader');
 goog.require('shaka.util.ContentDatabaseWriter');
 
 describe('AjaxRequest', function() {
@@ -63,16 +63,17 @@ describe('AjaxRequest', function() {
     streamInfo.mimeType = 'video/phony';
     streamInfo.codecs = 'phony';
 
-    var drmSchemeInfo = shaka.player.DrmSchemeInfo.createUnencrypted();
-
     var db = new shaka.util.ContentDatabaseWriter(null, null);
-    db.setUpDatabase().then(function() {
+    var db2 = new shaka.util.ContentDatabaseReader();
+    Promise.all([db.setUpDatabase(), db2.setUpDatabase()]).then(function() {
       return db.insertStream_(streamInfo, testIndex, testInitData, 1, 0);
     }).then(function(streamId) {
-      db.closeDatabaseConnection();
       var request = new shaka.util.AjaxRequest('idb://' + streamId + '/0');
+      request.parameters.contentDatabase = db2;
       return request.send();
     }).then(function(xhr) {
+      db.closeDatabaseConnection();
+      db2.closeDatabaseConnection();
       expect(xhr.response).toEqual(jasmine.any(ArrayBuffer));
       expect(xhr.response.byteLength).toEqual(bufferSize);
       done();

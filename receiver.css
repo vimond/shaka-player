@@ -1,5 +1,4 @@
 /**
- * @license
  * Copyright 2015 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,14 +14,30 @@
  * limitations under the License.
  */
 
-// Require all exported classes from the library.
-goog.require('shaka.player.DashVideoSource');
-goog.require('shaka.player.HttpVideoSource');
-goog.require('shaka.player.OfflineVideoSource');
-goog.require('shaka.player.Player');
-goog.require('shaka.player.StreamVideoSource');
-goog.require('shaka.polyfill.installAll');
-goog.require('shaka.util.EWMABandwidthEstimator');
-goog.require('shaka.util.FakeEventTarget');
-goog.require('shaka.util.Uint8ArrayUtils');
-goog.require('shaka.vimond.player.ModifyableDashVideoSource');
+body {
+  margin: 0;
+}
+
+video {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+}
+
+#bufferingSpinner {
+  margin: auto;
+  z-index: 1;
+  width: 50px;
+  height: 50px;
+  background-size: 50px;
+  background-image: url('assets/controls/buffering.gif');
+
+  display: none;
+
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+}
