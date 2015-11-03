@@ -573,7 +573,7 @@ app.storeStream = function() {
   var offlineSource = new shaka.player.OfflineVideoSource(
       null, estimator, abrManager);
   offlineSource.addEventListener('progress', app.progressEventHandler_);
-  var wvServerUrl = document.getElementById('wvLicenseServerUrlInput').value;
+  var wvServerUrl = document.getElementById('customLicenseServerUrlInput').value;
   offlineSource.store(
       mediaUrl,
       preferredLanguage,
@@ -754,47 +754,38 @@ app.loadDashStream = function() {
       // changed networks if they are on a laptop or mobile device.
       app.estimator_ = new shaka.util.EWMABandwidthEstimator();
     }
-  var extendedConfig = app.extendedConfigurationManager.getAndStoreConfiguration();
+    var extendedConfig = app.extendedConfigurationManager.getAndStoreConfiguration();
 
-  /*
-{ 
-  "manifestModifier": {
-    "replacements": [{
-      "match": "(\"mp4a\\.40\\.2\")+",
-      "options": "g",
-      "replacement": "\"mp4a.40.5\""
-    }]
-  }
-}
-   */
-  
-  console.assert(app.estimator_);
-  if (app.estimator_.getDataAge() >= 3600) {
-    // Disregard any bandwidth data older than one hour.  The user may have
-    // changed networks if they are on a laptop or mobile device.
-    app.estimator_ = new shaka.util.EWMABandwidthEstimator();
-    var estimator = /** @type {!shaka.util.IBandwidthEstimator} */(
-        app.estimator_);
-    var abrManager = new shaka.media.SimpleAbrManager();
-    var wvServerUrl = document.getElementById('wvLicenseServerUrlInput').value;
-    app.load_(
-        new shaka.player.DashVideoSource(
-            mediaUrl,
-            appUtils.interpretContentProtection.bind(
-                null, app.player_, wvServerUrl),
-            estimator,
-            abrManager));
-  }
+    /*
+     { 
+     "manifestModifier": {
+     "replacements": [{
+     "match": "(\"mp4a\\.40\\.2\")+",
+     "options": "g",
+     "replacement": "\"mp4a.40.5\""
+     }]
+     }
+     }
+     */
 
-  var estimator = /** @type {!shaka.util.IBandwidthEstimator} */(
-      app.estimator_);
-  var abrManager = new shaka.media.SimpleAbrManager();
-  app.load_(
-      new shaka.player.DashVideoSource(
-          mediaUrl,
-          app.interpretContentProtection_,
-          estimator,
-          abrManager));
+    console.assert(app.estimator_);
+    if (app.estimator_.getDataAge() >= 3600) {
+      // Disregard any bandwidth data older than one hour.  The user may have
+      // changed networks if they are on a laptop or mobile device.
+      app.estimator_ = new shaka.util.EWMABandwidthEstimator();
+      var estimator = /** @type {!shaka.util.IBandwidthEstimator} */(
+          app.estimator_);
+      var abrManager = new shaka.media.SimpleAbrManager();
+      var wvServerUrl = document.getElementById('customLicenseServerUrlInput').value;
+      app.load_(
+          new shaka.vimond.player.ModifyableDashVideoSource(
+              mediaUrl,
+              app.interpretContentProtection_,
+              estimator,
+              abrManager, null, extendedConfig && extendedConfig.manifestModifier));
+    }
+
+  }
 };
 
 
