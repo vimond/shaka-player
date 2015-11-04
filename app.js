@@ -258,6 +258,7 @@ app.init = function() {
     app.cycleAudio();
   }
   app.video_.addEventListener('ended', function() {
+    app.player_.destroy();
     app.resetCycleState_('videoTracks', 'cycleVideo', true);
     app.resetCycleState_('audioTracks', 'cycleAudio', false);
   });
