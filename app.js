@@ -226,15 +226,15 @@ app.init = function() {
   if ('asset' in params) {
     document.getElementById('manifestUrlInput').value = params['asset'];
     app.onMpdCustom();
-  } else if(localStorage.getItem('shakaManifestUrl')) {
-    document.getElementById('manifestUrlInput').value = localStorage.getItem('shakaManifestUrl');
+  } else if(window.localStorage.getItem('shakaManifestUrl')) {
+    document.getElementById('manifestUrlInput').value = window.localStorage.getItem('shakaManifestUrl');
     app.onMpdCustom();
   }
   if ('license' in params) {
     document.getElementById('customLicenseServerUrlInput').value =
         params['license'];
   } else {
-    document.getElementById('customLicenseServerUrlInput').value = localStorage.getItem('shakaLicenseUrl') || '';
+    document.getElementById('customLicenseServerUrlInput').value = window.localStorage.getItem('shakaLicenseUrl') || '';
   }
   
   if ('dash' in params) {
@@ -710,8 +710,8 @@ app.loadStream = function() {
   } else {
     app.loadOfflineStream();
   }
-  localStorage.setItem('shakaLicenseUrl', document.getElementById('customLicenseServerUrlInput').value);
-  localStorage.setItem('shakaManifestUrl', document.getElementById('manifestUrlInput').value);
+  window.localStorage.setItem('shakaLicenseUrl', document.getElementById('customLicenseServerUrlInput').value);
+  window.localStorage.setItem('shakaManifestUrl', document.getElementById('manifestUrlInput').value);
 };
 
 
@@ -735,6 +735,20 @@ app.loadHttpStream = function() {
 };
 
 
+
+/*
+ { 
+ "manifestModifier": {
+ "replacements": [{
+ "match": "(\"mp4a\\.40\\.2\")+",
+ "options": "g",
+ "replacement": "\"mp4a.40.5\""
+ }]
+ }
+ }
+ */
+
+
 /**
  * Loads a dash stream.
  */
@@ -750,42 +764,25 @@ app.loadDashStream = function() {
     sender.loadStream(app.streamState_);
   } else {
     console.assert(app.estimator_);
-    if (app.estimator_.getDataAge() >= 3600) {
-      // Disregard any bandwidth data older than one hour.  The user may have
-      // changed networks if they are on a laptop or mobile device.
-      app.estimator_ = new shaka.util.EWMABandwidthEstimator();
-    }
     var extendedConfig = app.extendedConfigurationManager.getAndStoreConfiguration();
-
-    /*
-     { 
-     "manifestModifier": {
-     "replacements": [{
-     "match": "(\"mp4a\\.40\\.2\")+",
-     "options": "g",
-     "replacement": "\"mp4a.40.5\""
-     }]
-     }
-     }
-     */
-
-    console.assert(app.estimator_);
     if (app.estimator_.getDataAge() >= 3600) {
       // Disregard any bandwidth data older than one hour.  The user may have
       // changed networks if they are on a laptop or mobile device.
       app.estimator_ = new shaka.util.EWMABandwidthEstimator();
-      var estimator = /** @type {!shaka.util.IBandwidthEstimator} */(
-          app.estimator_);
-      var abrManager = new shaka.media.SimpleAbrManager();
-      var wvServerUrl = document.getElementById('customLicenseServerUrlInput').value;
-      app.load_(
-          new shaka.vimond.player.ModifyableDashVideoSource(
-              mediaUrl,
-              app.interpretContentProtection_,
-              estimator,
-              abrManager, null, extendedConfig && extendedConfig.manifestModifier));
     }
 
+    var estimator = /** @type {!shaka.util.IBandwidthEstimator} */(
+        app.estimator_);
+    var abrManager = new shaka.media.SimpleAbrManager();
+    var wvServerUrl = document.getElementById('customLicenseServerUrlInput').value;
+    app.load_(
+        new shaka.vimond.player.ModifyableDashVideoSource(
+            mediaUrl,
+            appUtils.interpretContentProtection.bind(
+                null, app.player_, wvServerUrl),
+            estimator,
+            abrManager, null, extendedConfig && extendedConfig.manifestModifier));
+    
   }
 };
 
@@ -988,152 +985,6 @@ app.initPlayer_ = function() {
  */
 app.onPlayerError_ = function(event) {
   console.error('Player error', event);
-};
-/**
- * 
- * @param {shaka.player.DrmInfo.LicenseRequestInfo} info
- * @private
- */
-app.licensePreProcessor_ = function(info) {
-  info.headers = { 'Content-Type': 'application/octet-stream' };
-};
-
-/**
- * Called to interpret ContentProtection elements from the MPD.
- * @param {!string} schemeIdUri
- * @param {!Element} contentProtection The ContentProtection XML element.
- * @return {Array.<shaka.player.DrmInfo.Config>}
- * @private
- */
-app.interpretContentProtection_ = function(schemeIdUri, contentProtection) {
-  var Uint8ArrayUtils = shaka.util.Uint8ArrayUtils;
-
-  var licenseServerUrlOverride =
-      document.getElementById('customLicenseServerUrlInput').value || null;
-
-  if (schemeIdUri == 'com.youtube.clearkey') {
-    // This is the scheme used by YouTube's MediaSource demo.
-    var license;
-    for (var i = 0; i < contentProtection.childNodes.length; ++i) {
-      var child = contentProtection.childNodes[i];
-      if (child.nodeName == 'ytdrm:License') {
-        license = child;
-        break;
-      }
-    }
-    if (!license) {
-      return null;
-    }
-    var keyid = Uint8ArrayUtils.fromHex(license.getAttribute('keyid'));
-    var key = Uint8ArrayUtils.fromHex(license.getAttribute('key'));
-    var keyObj = {
-      kty: 'oct',
-      kid: Uint8ArrayUtils.toBase64(keyid, false),
-      k: Uint8ArrayUtils.toBase64(key, false)
-    };
-    var jwkSet = {keys: [keyObj]};
-    license = JSON.stringify(jwkSet);
-    var initData = {
-      'initData': keyid,
-      'initDataType': 'webm'
-    };
-    var licenseServerUrl = 'data:application/json;base64,' +
-        window.btoa(license);
-    return [{
-      'keySystem': 'org.w3.clearkey',
-      'licenseServerUrl': licenseServerUrl,
-      'initData': initData
-    }];
-  }
-
-  if (schemeIdUri == 'http://youtube.com/drm/2012/10/10') {
-    // This is another scheme used by YouTube.
-    var licenseServerUrl = null;
-    for (var i = 0; i < contentProtection.childNodes.length; ++i) {
-      var child = contentProtection.childNodes[i];
-      if (child.nodeName == 'yt:SystemURL' &&
-          child.getAttribute('type') == 'widevine') {
-        licenseServerUrl = licenseServerUrlOverride || child.textContent;
-        break;
-      }
-    }
-    if (licenseServerUrl) {
-      return [{
-        'keySystem': 'com.widevine.alpha',
-        'licenseServerUrl': licenseServerUrl,
-        'licensePostProcessor': app.postProcessYouTubeLicenseResponse_
-      }];
-    }
-  }
-
-  if (schemeIdUri.toLowerCase() ==
-      'urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed') {
-    // This is the UUID which represents Widevine in the edash-packager.
-    var licenseServerUrl =
-        licenseServerUrlOverride || '//widevine-proxy.appspot.com/proxy';
-    return [{
-      'keySystem': 'com.widevine.alpha',
-      'licenseServerUrl': licenseServerUrl,
-      'licensePreProcessor': app.licensePreProcessor_
-    }];
-  }
-
-  if (schemeIdUri.toLowerCase() == 'urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95') {
-    console.log('PlayReady content protection data found.');
-    var licenseServerUrl =
-        licenseServerUrlOverride;
-    return [{
-      'keySystem': 'com.microsoft.playready',
-      'licenseServerUrl': licenseServerUrl,
-      'licensePreProcessor': app.licensePreProcessor_
-    }];
-  }
-  
-  if (schemeIdUri == 'urn:mpeg:dash:mp4protection:2011') {
-    // Ignore without a warning.
-    return null;
-  }
-
-  console.warn('Unrecognized scheme:', schemeIdUri);
-  return null;
-};
-
-
-/**
- * Post-process the YouTube license server's response, which has headers before
- * the actual license.
- *
- * @param {!Uint8Array} response
- * @return {!Uint8Array}
- * @private
- */
-app.postProcessYouTubeLicenseResponse_ = function(response) {
-  var Uint8ArrayUtils = shaka.util.Uint8ArrayUtils;
-  var responseStr = Uint8ArrayUtils.toString(response);
-  var index = responseStr.indexOf('\r\n\r\n');
-  if (index >= 0) {
-    // Strip off the headers.
-    var headers = responseStr.substr(0, index).split('\r\n');
-    responseStr = responseStr.substr(index + 4);
-    console.info('YT HEADERS:', headers);
-
-    // Check for restrictions on HD content.
-    for (var i = 0; i < headers.length; ++i) {
-      var k = headers[i].split(': ')[0];
-      var v = headers[i].split(': ')[1];
-      if (k == 'Authorized-Format-Types') {
-        var types = v.split(',');
-        if (types.indexOf('HD') == -1) {
-          // This license will not permit HD playback.
-          console.info('HD disabled.');
-          var restrictions = app.player_.getConfiguration()['restrictions'];
-          restrictions.maxHeight = 576;
-          app.player_.configure({'restrictions': restrictions});
-        }
-      }
-    }
-  }
-  return Uint8ArrayUtils.fromString(responseStr);
 };
 
 

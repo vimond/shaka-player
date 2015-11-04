@@ -213,7 +213,19 @@ appUtils.interpretContentProtection = function(
         wvLicenseServerUrlOverride || '//widevine-proxy.appspot.com/proxy';
     return [{
       'keySystem': 'com.widevine.alpha',
-      'licenseServerUrl': licenseServerUrl
+      'licenseServerUrl': licenseServerUrl,
+      'licensePreProcessor': appUtils.licensePreProcessor_
+    }];
+  }
+
+  if (schemeIdUri.toLowerCase() == 'urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95') {
+    console.log('PlayReady content protection data found.');
+    var licenseServerUrl =
+        wvLicenseServerUrlOverride;
+    return [{
+      'keySystem': 'com.microsoft.playready',
+      'licenseServerUrl': licenseServerUrl,
+      'licensePreProcessor': appUtils.licensePreProcessor_
     }];
   }
 
@@ -226,6 +238,14 @@ appUtils.interpretContentProtection = function(
   return null;
 };
 
+/**
+ *
+ * @param {shaka.player.DrmInfo.LicenseRequestInfo} info
+ * @private
+ */
+appUtils.licensePreProcessor_ = function(info) {
+  info.headers = { 'Content-Type': 'application/octet-stream' };
+};
 
 /**
  * Post-process the YouTube license server's response, which has headers before
