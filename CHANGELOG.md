@@ -1,3 +1,92 @@
+## 1.6.0 (2015-11-17)
+
+Features:
+  - Partial IE11 & PlayReady support.  (Thanks, Jono!)
+    - https://github.com/google/shaka-player/pull/176
+    - *live and offline content not working*
+    - *non-zero start times not working*
+    - *IE11 fails to decode some test assets*
+      - https://github.com/google/shaka-player/issues/224
+  - Added support for setPlaybackStartTime on live streams.
+    - https://github.com/google/shaka-player/pull/231
+  - Improved support for live streaming corner cases.
+    - https://github.com/google/shaka-player/issues/139
+    - https://github.com/google/shaka-player/issues/140
+    - https://github.com/google/shaka-player/issues/141
+    - https://github.com/google/shaka-player/issues/145
+    - https://github.com/google/shaka-player/issues/185
+  - Now builds with three different configs by default.
+    - Full build (all features enabled).
+    - DASH MP4 VOD. (Only DASH w/ SegmentBase, no WebM.)
+    - DASH MP4 live. (Only DASH w/o SegmentBase, no WebM.)
+    - https://github.com/google/shaka-player/issues/116
+  - Changed startNumber implementation to be more consistent.
+    - https://github.com/google/shaka-player/issues/192
+  - Added a new Promise polyfill for IE11.
+  - Added support for WebM w/ unknown size in the Segment element.
+
+Bugfixes:
+  - Expired sessions (for example, when using key rotation) are now cleaned up.
+    - https://github.com/google/shaka-player/issues/210
+  - Manifests can now be reprocessed without an update when
+    availabilityStartTime passes.
+    - https://github.com/google/shaka-player/issues/172
+
+Test app features:
+  - Added Chromecast support to the demo app.
+    (No changes to the library for this.)
+    - https://github.com/google/shaka-player/issues/117
+  - Removed force-prefixed feature for improved IE11 support.
+    - https://github.com/google/shaka-player/issues/222
+  - Added links to the project and the docs.
+
+Broken Compatibility:
+  - Removed Player methods deprecated since v1.5.0.
+    - enableAdaptation
+    - getAdaptationEnabled
+    - setStreamBufferSize
+    - getStreamBufferSize
+    - setLicenseRequestTimeout
+    - setMpdRequestTimeout
+    - setRangeRequestTimeout
+    - setPreferredLanguage
+    - setRestrictions
+    - getRestrictions
+    - https://github.com/google/shaka-player/issues/203
+    - https://github.com/google/shaka-player/issues/93
+  - Removed support for the old-style ContentProtection callback, deprecated
+    since v1.5.0.
+    - https://github.com/google/shaka-player/issues/203
+    - https://github.com/google/shaka-player/issues/71
+
+
+## 1.5.2 (2015-11-12)
+
+A roll-up of recent bugfixes.
+
+Bugfixes:
+  - Fixed timestamp correction for some live streams from Elemental.
+    - https://github.com/google/shaka-player/issues/200
+  - Fixed support for manifests with different PSSHs per Representation.
+    - https://github.com/google/shaka-player/issues/229
+  - Fixed support for ContentProtection elements at both AdaptationSet and
+    Representation level in the same manifest.
+    - https://github.com/google/shaka-player/issues/230
+  - Fixed support for bound DrmInfo callbacks.
+    - https://github.com/google/shaka-player/issues/227
+  - Fixed the 'enabled' flag of text tracks when manipulated directly by the
+    video element.
+    - https://github.com/google/shaka-player/issues/214
+  - Fixed buffering to use the correct goal (minBufferTime) when re-buffering.
+    - https://github.com/google/shaka-player/issues/190
+  - Fixed a broken link in the documentation.  (Thanks, Leandro.)
+    - https://github.com/google/shaka-player/issues/217
+    - https://github.com/google/shaka-player/pull/218
+
+Test app features:
+  - Added a Widevine-encrypted version of the Sintel 4k test asset.
+
+
 ## 1.5.1 (2015-10-07)
 
 A roll-up of recent bugfixes.

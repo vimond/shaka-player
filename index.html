@@ -30,13 +30,33 @@
   </head>
   <body>
     <table>
+      <tr>
+        <td colspan="2" class="heading">Shaka Player</td>
+      </tr>
+      <tr>
+        <td>API Documentation:</td>
+        <td><a href="https://shaka-player-demo.appspot.com/docs/index.html" target="blank">https://shaka-player-demo.appspot.com/docs/index.html</a></td>
+      </tr>
+      <tr>
+        <td>GitHub Project:</td>
+        <td><a href="https://github.com/google/shaka-player" target="blank">https://github.com/google/shaka-player</a></td>
+      </tr>
+      <tr>
+        <td>CDNJS:</td>
+        <td><a href="https://cdnjs.com/libraries/shaka-player" target="blank">https://cdnjs.com/libraries/shaka-player</a></td>
+      </tr>
+      <tr>
+        <td>NPM:</td>
+        <td><a href="https://www.npmjs.com/package/shaka-player" target="blank">https://www.npmjs.com/package/shaka-player</a></td>
+      </tr>
+    </table>
+
+    <br>
+
+    <table>
       <!-- Common rows -->
       <tr>
         <td colspan="3" class="heading">Stream Setup</td>
-      </tr>
-      <tr>
-        <td>Force prefixed EME?</td>
-        <td colspan="2"><input id="forcePrefixed"  class="streamOption" type="checkbox"></td>
       </tr>
       <tr>
         <td>Stream type:</td>
@@ -94,6 +114,7 @@
             <option value="assets/oops_cenc_pssh.mpd">"Oops" (modified YT DASH EME test) - MP4, Widevine, PSSH in MPD</option>
             <option value="//storage.googleapis.com/widevine-demo-media/sintel-1080p/dash.mpd">"Sintel" (1080p high bitrate test) - MP4</option>
             <option value="//storage.googleapis.com/widevine-demo-media/sintel-multicodec-4k/dash.mpd">"Sintel" (4k) - MP4, VP8, VP9</option>
+            <option value="//storage.googleapis.com/widevine-demo-media/sintel-4k-widevine/sintel.mpd">"Sintel" (4k) - MP4, Widevine</option>
             <option value="">(custom)</option>
           </select>
         </td>
@@ -158,12 +179,12 @@
       <tr>
         <td>Available video tracks:</td>
         <td><select id="videoTracks" class="streamOption" onchange="app.onVideoChange()"></select></td>
-        <td><input type ="checkbox" id="cycleVideo" class="streamOption" onchange="app.cycleVideo()">Cycle video tracks</button></td>
+        <td><input type ="checkbox" id="cycleVideo" class="streamOption" onchange="app.cycleVideo()">Cycle video tracks</td>
       </tr>
       <tr>
         <td>Available audio tracks:</td>
         <td><select id="audioTracks" class="streamOption" onchange="app.onAudioChange()"></select></td>
-        <td><input type ="checkbox" id="cycleAudio" class="streamOption" onchange="app.cycleAudio()">Cycle audio tracks</button></td>
+        <td><input type ="checkbox" id="cycleAudio" class="streamOption" onchange="app.cycleAudio()">Cycle audio tracks</td>
       </tr>
       <tr>
         <td>Available text tracks:</td>
