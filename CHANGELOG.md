@@ -1,3 +1,28 @@
+## 1.6.2 (2015-12-14)
+
+Features:
+  - Added a new configure parameter to allow a user to completely disable
+    the cache-buster.  This is necessary for certain CDNs, but please note
+    the tradeoffs before using.  Bandwidth estimation can be adversely
+    affected, particularly for low-bandwidth users.
+    - https://github.com/google/shaka-player/issues/235
+    - https://github.com/google/shaka-player/issues/238
+    - https://github.com/google/shaka-player/issues/76
+
+Bugfixes:
+  - Fixed interpretation of startNumber for SegmentTemplate w/ duration.
+    - https://github.com/google/shaka-player/issues/237
+
+
+## 1.6.1 (2015-12-07)
+
+Bugfixes:
+  - Fixed handling when all streams are removed in a manifest update.
+  - Fixed annotation mistakes in preparation for a new compiler release.
+  - Fixed Promise polyfill errors in compiled mode.
+    - https://github.com/google/shaka-player/issues/236
+
+
 ## 1.6.0 (2015-11-17)
 
 Features:
