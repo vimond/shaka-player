@@ -51,7 +51,7 @@ shaka.vimond.dash.PreprocessableMpdRequest.prototype.send = function() {
             }
 
             var error = new Error('MPD parse failure.');
-            error.type = 'mpd';
+            error.type = 'dash';
             return Promise.reject(error);
         }.bind(this));
 };
@@ -64,7 +64,7 @@ shaka.vimond.dash.PreprocessableMpdRequest.prototype.send = function() {
 shaka.vimond.dash.PreprocessableMpdRequest.prototype.applyPresentationTimeOffsetFix_ = function(mpd) {
     "use strict";
     if (mpd.type === 'static' && mpd.periods && this.presentationTimeOffsetFixMethod_) {
-        mpd.periods.forEach(function(/** {shaka.dash.mpd.Period} */ period) {
+        mpd.periods.forEach(function(period) {
             var offset = this.presentationTimeOffsetFixMethod_(period);
             try {
                 if (offset > 0) {
@@ -74,7 +74,7 @@ shaka.vimond.dash.PreprocessableMpdRequest.prototype.applyPresentationTimeOffset
                             a.segmentTemplate.presentationTimeOffset = offset * (a.segmentTemplate.timescale || 1);
                         }
                         if (a.representations) {
-                            a.representations.forEach(function(/** {shaka.dash.mpd.Representation} */ r) {
+                            a.representations.forEach(function(r) {
                                 if (r.segmentTemplate && !r.segmentTemplate.presentationTimeOffset) {
                                     r.segmentTemplate.presentationTimeOffset = offset * (r.segmentTemplate.timescale || 1);
                                 }
@@ -101,7 +101,8 @@ shaka.vimond.dash.PreprocessableMpdRequest.prototype.findFirstOffsetWithVideo_ =
     'use strict';
     var videoOffset = 0;
     try {
-        period.adaptationSets.forEach(function(/** {shaka.dash.mpd.AdaptationSet} */ as) {
+        period.adaptationSets.forEach(/** @param {!shaka.dash.mpd.AdaptationSet} as */ 
+        function (as) {
             var st = as.segmentTemplate;
             if (st && !st.presentationTimeOffset) {
                 var firstSegment = st.timeline && st.timeline.timePoints && st.timeline.timePoints[0];
@@ -124,7 +125,7 @@ shaka.vimond.dash.PreprocessableMpdRequest.prototype.findLowestOffset_ = functio
     'use strict';
     var lowestOffset = 0;
     try {
-        period.adaptationSets.forEach(function (/** {shaka.dash.mpd.AdaptationSet} */ as) {
+        period.adaptationSets.forEach(function (as) {
             var st = as.segmentTemplate;
             if (st && !st.presentationTimeOffset) {
                 var firstSegment = st.timeline && st.timeline.timePoints && st.timeline.timePoints[0];
@@ -145,7 +146,7 @@ shaka.vimond.dash.PreprocessableMpdRequest.prototype.findHighestOffset_ = functi
     'use strict';
     var highestOffset = 0;
     try {
-        period.adaptationSets.forEach(function (/** {shaka.dash.mpd.AdaptationSet} */ as) {
+        period.adaptationSets.forEach(function (as) {
             var st = as.segmentTemplate;
             if (st && !st.presentationTimeOffset) {
                 var firstSegment = st.timeline && st.timeline.timePoints && st.timeline.timePoints[0];
