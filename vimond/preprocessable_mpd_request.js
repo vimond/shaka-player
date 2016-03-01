@@ -45,7 +45,7 @@ goog.inherits(shaka.vimond.dash.PreprocessableMpdRequest, shaka.dash.MpdRequest)
 shaka.vimond.dash.PreprocessableMpdRequest.prototype.send = function() {
     var url = this.url_;
     return url.fetch(this.parameters_).then(function(data) {
-            var mpd = shaka.dash.mpd.parseMpd(this.manifestTextPreprocessor_.process(data), url.urls);
+            var mpd = shaka.dash.mpd.parseMpd(this.manifestTextPreprocessor_.process(data), url.urls, [url.currentUrl]);
             if (mpd) {
                 return Promise.resolve(this.applyPresentationTimeOffsetFix_(mpd));
             }
