@@ -38,11 +38,11 @@ module.exports = function(config) {
       '/assets/': '/base/assets/'
     },
 
-    // do not panic about "no activity" unless a test takes longer than 60s.
-    browserNoActivityTimeout: 60000,
+    // do not panic about "no activity" unless a test takes longer than 70s.
+    browserNoActivityTimeout: 70000,
 
     // don't capture the client's console logs
-    client: { captureConsole: true },
+    client: { captureConsole: false },
 
     // web server port
     port: 9876,
