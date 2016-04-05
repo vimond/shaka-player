@@ -96,6 +96,12 @@ dependencies by running:
 
 [in our generated docs]: http://shaka-player-demo.appspot.com/docs/tutorial-dev.html
 
+## Vimond build
+
+For including the Vimond extensions, use 
+```Shell
+./build/all-vup-debug.sh
+```
 
 ## Running ##
 
