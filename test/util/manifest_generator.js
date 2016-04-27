@@ -29,12 +29,10 @@ goog.provide('shaka.test.ManifestGenerator');
  * @struct
  */
 shaka.test.ManifestGenerator = function() {
-  var timeline = new shaka.media.PresentationTimeline(
-      Number.POSITIVE_INFINITY /* duration */,
-      0 /* presentationStartTime */,
-      Number.POSITIVE_INFINITY /* segmentAvailabilityDuration */,
-      10 /* maxSegmentDuration */,
-      0 /* clockOffset */);
+  var timeline = new shaka.media.PresentationTimeline(0);
+  timeline.setSegmentAvailabilityDuration(Number.POSITIVE_INFINITY);
+  timeline.notifyMaxSegmentDuration(10);
+
   /** @private {shakaExtern.Manifest} */
   this.manifest_ = {
     presentationTimeline: timeline,
@@ -242,7 +240,26 @@ shaka.test.ManifestGenerator.prototype.videoRobustness = function(robustness) {
  */
 shaka.test.ManifestGenerator.prototype.addInitData = function(type, buffer) {
   var drmInfo = this.currentDrmInfo_();
+  if (!drmInfo.initData)
+    drmInfo.initData = [];
   drmInfo.initData.push({initData: buffer, initDataType: type});
+  return this;
+};
+
+
+/**
+ * Adds a new 'cenc' init data to the current DRM info.
+ *
+ * @param {string} base64
+ * @return {!shaka.test.ManifestGenerator}
+ */
+shaka.test.ManifestGenerator.prototype.addCencInitData = function(base64) {
+  var drmInfo = this.currentDrmInfo_();
+  if (!drmInfo.initData)
+    drmInfo.initData = [];
+
+  var buffer = shaka.util.Uint8ArrayUtils.fromBase64(base64);
+  drmInfo.initData.push({initData: buffer, initDataType: 'cenc'});
   return this;
 };
 // }}}
@@ -272,7 +289,9 @@ shaka.test.ManifestGenerator.prototype.addStream = function(id) {
     width: undefined,
     height: undefined,
     kind: undefined,
-    keyId: null
+    keyId: null,
+    allowedByApplication: true,
+    allowedByKeySystem: true
   };
   stream.createSegmentIndex.and.callFake(
       function() { return Promise.resolve(); });
@@ -424,6 +443,30 @@ shaka.test.ManifestGenerator.prototype.kind = function(kind) {
 shaka.test.ManifestGenerator.prototype.keyId = function(keyId) {
   var stream = this.currentStream_();
   stream.keyId = keyId;
+  return this;
+};
+
+
+/**
+ * Sets that the current stream is disallowed by the application.
+ *
+ * @return {!shaka.test.ManifestGenerator}
+ */
+shaka.test.ManifestGenerator.prototype.disallowByApplication = function() {
+  var stream = this.currentStream_();
+  stream.allowedByApplication = false;
+  return this;
+};
+
+
+/**
+ * Sets that the current stream is disallowed by the key system.
+ *
+ * @return {!shaka.test.ManifestGenerator}
+ */
+shaka.test.ManifestGenerator.prototype.disallowByKeySystem = function() {
+  var stream = this.currentStream_();
+  stream.allowedByKeySystem = false;
   return this;
 };
 // }}}

@@ -26,6 +26,8 @@ shakaDemo.setupConfiguration_ = function() {
       'keyup', shakaDemo.onConfigKeyUp_);
   document.getElementById('preferredTextLanguage').addEventListener(
       'keyup', shakaDemo.onConfigKeyUp_);
+  document.getElementById('showTrickPlay').addEventListener(
+      'change', shakaDemo.onTrickPlayChange_);
   document.getElementById('enableAdaptation').addEventListener(
       'change', shakaDemo.onAdaptationChange_);
 };
@@ -55,6 +57,16 @@ shakaDemo.onConfigKeyUp_ = function(event) {
 shakaDemo.onAdaptationChange_ = function(event) {
   // Update adaptation config.
   shakaDemo.player_.configure(/** @type {shakaExtern.PlayerConfiguration} */({
-    enableAdaptation: event.target.checked
+    abr: { enabled: event.target.checked }
   }));
+};
+
+
+/**
+ * @param {!Event} event
+ * @private
+ */
+shakaDemo.onTrickPlayChange_ = function(event) {
+  // Show/hide trick play controls.
+  shakaDemo.controls_.showTrickPlay(event.target.checked);
 };

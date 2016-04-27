@@ -26,6 +26,9 @@ import re
 import subprocess
 import sys
 
+def _parseVersion(s):
+  return tuple([int(i) for i in s.split('.')])
+
 def getSourceBase():
   """Returns the absolute path to the source code base."""
   return os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -46,11 +49,24 @@ def isCygwin():
   """Determines if the system is Cygwin (i.e. not native Windows)."""
   return 'CYGWIN' in platform.uname()[0]
 
+def quoteArgument(arg):
+  """Quotes shell arguments so that printCmdLine output can be copied and pasted
+  into a shell."""
+  if '"' in arg:
+    assert "'" not in arg
+    return "'" + arg + "'"
+  if "'" in arg:
+    assert '"' not in arg
+    return '"' + arg + '"'
+  if ' ' in arg:
+    return '"' + arg + '"'
+  return arg
+
 def printCmdLine(args):
   """Prints the given command line if the environment variable PRINT_ARGUMENTS
   is set."""
   if os.environ.get('PRINT_ARGUMENTS'):
-    print args
+    print ' '.join([quoteArgument(x) for x in args])
 
 def cygwinSafePath(path):
   """If the system is Cygwin, converts the given Cygwin path to a Windows path;
@@ -130,9 +146,21 @@ def getNodeBinaryPath(name):
 def updateNodeModules():
   base = cygwinSafePath(getSourceBase())
   cmd = 'npm.cmd' if isWindows() else 'npm'
+
+  # Check the version of npm.
+  cmdLine = [cmd, '-v']
+  printCmdLine(cmdLine)
+  version = subprocess.check_output(cmdLine)
+  if _parseVersion(version) < _parseVersion('1.3.12'):
+    print >> sys.stderr, 'npm version is too old, please upgrade.  e.g.:'
+    print >> sys.stderr, '  npm install -g npm'
+    return False
+
+  # Update the modules.
   cmdLine = [cmd, '--prefix', base, 'update']
   printCmdLine(cmdLine)
   subprocess.check_call(cmdLine)
+  return True
 
 def runMain(main):
   """Executes the given function with the current command-line arguments,

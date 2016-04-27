@@ -94,16 +94,22 @@ shakaAssets.Feature = {
 /**
  * @typedef {{
  *   uri: string,
+ *   language: string,
  *   kind: string,
- *   lang: string
+ *   mime: string,
+ *   codecs: (string|undefined)
  * }}
  *
  * @property {string} uri
  *   The URI of the text.
+ * @property {string} language
+ *   The language of the text (e.g. 'en').
  * @property {string} kind
  *   The kind of text (e.g. 'subtitles').
- * @property {string} lang
- *   The language of the text (e.g. 'en').
+ * @property {string} mime
+ *   The MIME type of the text (e.g. 'text/vtt')
+ * @property {(string|undefined)} codecs
+ *   (optional) The codecs string, if needed to refine the MIME type.
  */
 shakaAssets.ExtraText;
 
@@ -234,20 +240,6 @@ shakaAssets.YouTubeCallback = function(node) {
       }
     }
     return configs;
-  } else if (schemeIdUri == 'com.youtube.clearkey') {
-    // The keys are given in the asset definition and passed to DrmEngine.
-    // DrmEngine will then use them to replace |licesneServerUrl| and
-    // |initData|.
-    return [{
-      keySystem: 'org.w3.clearkey',
-      licenseServerUri: '',
-      distinctiveIdentifierRequired: false,
-      persistentStateRequired: false,
-      audioRobustness: '',
-      videoRobustness: '',
-      serverCertificate: null,
-      initData: null
-    }];
   }
 
   return null;
@@ -355,7 +347,6 @@ shakaAssets.testAssets = [
       shakaAssets.Feature.SEGMENT_BASE
     ],
 
-    drmCallback: shakaAssets.YouTubeCallback,
     clearKeys: {
       '60061e017e477e877e57d00d1ed00d1e': '1a8a2095e4deb2d29ec816ac7bae2082'
     }
@@ -510,26 +501,49 @@ shakaAssets.testAssets = [
     ]
   },
   {
-    name: 'Tears of Steel (encrypted)',
+    name: 'Tears of Steel (Widevine)',
     manifestUri: '//demo.unified-streaming.com/video/tears-of-steel/tears-of-steel-dash-widevine.ism/.mpd',  // gjslint: disable=110
 
     encoder: shakaAssets.Encoder.UNIFIED_STREAMING,
     source: shakaAssets.Source.UNIFIED_STREAMING,
     drm: [
-      // TODO: The PlayReady version of this is being rejected by Edge & IE.
-      // shakaAssets.KeySystem.PLAYREADY,
       shakaAssets.KeySystem.WIDEVINE
     ],
     features: [
+      shakaAssets.Feature.EMBEDDED_TEXT,
       shakaAssets.Feature.HIGH_DEFINITION,
       shakaAssets.Feature.MP4,
       shakaAssets.Feature.SEGMENT_TEMPLATE_TIMELINE,
+      shakaAssets.Feature.SUBTITLES,
+      shakaAssets.Feature.TTML,
       shakaAssets.Feature.ULTRA_HIGH_DEFINITION
     ],
 
     licenseServers: {
       'com.widevine.alpha': '//widevine-proxy.appspot.com/proxy'
-      // TODO: Locate PlayReady server URI.
+    }
+  },
+  {
+    name: 'Tears of Steel (PlayReady)',
+    manifestUri: '//demo.unified-streaming.com/video/tears-of-steel/tears-of-steel-dash-playready.ism/.mpd',  // gjslint: disable=110
+
+    encoder: shakaAssets.Encoder.UNIFIED_STREAMING,
+    source: shakaAssets.Source.UNIFIED_STREAMING,
+    drm: [
+      shakaAssets.KeySystem.PLAYREADY
+    ],
+    features: [
+      shakaAssets.Feature.EMBEDDED_TEXT,
+      shakaAssets.Feature.HIGH_DEFINITION,
+      shakaAssets.Feature.MP4,
+      shakaAssets.Feature.SEGMENT_TEMPLATE_TIMELINE,
+      shakaAssets.Feature.SUBTITLES,
+      shakaAssets.Feature.TTML,
+      shakaAssets.Feature.ULTRA_HIGH_DEFINITION
+    ],
+
+    licenseServers: {
+      'com.microsoft.playready': '//playready.directtaps.net/pr/svc/rightsmanager.asmx?PlayRight=1&UseSimpleNonPersistentLicense=1'  // gjslint: disable=110
     }
   },
   {
@@ -597,7 +611,7 @@ shakaAssets.testAssets = [
   // Wowza assets {{{
   // Src: http://www.dash-player.com/demo/streaming-server-and-encoder-support/
   {
-    name: 'Big Buck Bunny',
+    name: 'Big Buck Bunny (Live)',
     manifestUri: '//wowzaec2demo.streamlock.net/live/bigbuckbunny/manifest_mpm4sav_mvtime.mpd',  // gjslint: disable=110
 
     encoder: shakaAssets.Encoder.WOWZA,
@@ -680,23 +694,26 @@ shakaAssets.testAssets = [
     }
   },
   {
-    name: 'Tears Of Steel',
+    name: 'Tears Of Steel (external text)',
     manifestUri: '//ams-samplescdn.streaming.mediaservices.windows.net/11196e3d-2f40-4835-9a4d-fc52751b0323/TearsOfSteel_WAMEH264SmoothStreaming720p.ism/manifest(format=mpd-time-csf)',  // gjslint: disable=110
     extraText: [
       {
         uri: '//ams-samplescdn.streaming.mediaservices.windows.net/11196e3d-2f40-4835-9a4d-fc52751b0323/TOS-en.vtt',  // gjslint: disable=110
+        language: 'en',
         kind: 'subtitle',
-        lang: 'en'
+        mime: 'text/vtt'
       },
       {
         uri: '//ams-samplescdn.streaming.mediaservices.windows.net/11196e3d-2f40-4835-9a4d-fc52751b0323/TOS-es.vtt',  // gjslint: disable=110
+        language: 'es',
         kind: 'subtitle',
-        lang: 'es'
+        mime: 'text/vtt'
       },
       {
         uri: '//ams-samplescdn.streaming.mediaservices.windows.net/11196e3d-2f40-4835-9a4d-fc52751b0323/TOS-fr.vtt',  // gjslint: disable=110
+        language: 'fr',
         kind: 'subtitle',
-        lang: 'fr'
+        mime: 'text/vtt'
       }
     ],
 

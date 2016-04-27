@@ -37,6 +37,7 @@
  * @property {boolean} fromAdaptation
  *   True if the choice was made by AbrManager for adaptation; false if it
  *   was made by the application through selectTrack.
+ * @exportDoc
  */
 shakaExtern.StreamChoice;
 
@@ -66,7 +67,7 @@ shakaExtern.StreamChoice;
  * @property {number} height
  *   The height of the current video track.
  * @property {number} streamBandwidth
- *   The bandwidth required for the current streams (total, in kbit/sec).
+ *   The bandwidth required for the current streams (total, in bit/sec).
  *
  * @property {number} decodedFrames
  *   The total number of frames decoded by the Player.  This may be NaN if this
@@ -75,7 +76,7 @@ shakaExtern.StreamChoice;
  *   The total number of frames dropped by the Player.  This may be NaN if this
  *   is not supported by the browser.
  * @property {number} estimatedBandwidth
- *   The current estimated network bandwidth (in kbit/sec).
+ *   The current estimated network bandwidth (in bit/sec).
  * @property {number} playTime
  *   The total time spent in a playing state in seconds.
  * @property {number} bufferingTime
@@ -83,6 +84,7 @@ shakaExtern.StreamChoice;
  *
  * @property {!Array.<shakaExtern.StreamChoice>} switchHistory
  *   A history of the stream changes.
+ * @exportDoc
  */
 shakaExtern.Stats;
 
@@ -127,8 +129,56 @@ shakaExtern.Stats;
  *   (only for video tracks) The width of the track in pixels.
  * @property {?number} height
  *   (only for video tracks) The height of the track in pixels.
+ * @exportDoc
  */
 shakaExtern.Track;
+
+
+/**
+ * @typedef {{
+ *   minWidth: number,
+ *   maxWidth: number,
+ *   minHeight: number,
+ *   maxHeight: number,
+ *   minPixels: number,
+ *   maxPixels: number,
+ *
+ *   minAudioBandwidth: number,
+ *   maxAudioBandwidth: number,
+ *   minVideoBandwidth: number,
+ *   maxVideoBandwidth: number
+ * }}
+ *
+ * @description
+ * An object describing application restrictions on what tracks can play.  All
+ * restrictions must be fulfilled for a track to be playable.  If a track does
+ * not meet the restrictions, it will not appear in the track list and it will
+ * not be played.
+ *
+ * @property {number} minWidth
+ *   The minimum width of a video track, in pixels.
+ * @property {number} maxWidth
+ *   The maximum width of a video track, in pixels.
+ * @property {number} minHeight
+ *   The minimum height of a video track, in pixels.
+ * @property {number} maxHeight
+ *   The maximum height of a video track, in pixels.
+ * @property {number} minPixels
+ *   The minimum number of total pixels in a video track (i.e. width * height).
+ * @property {number} maxPixels
+ *   The maximum number of total pixels in a video track (i.e. width * height).
+ *
+ * @property {number} minAudioBandwidth
+ *   The minimum bandwidth of an audio track, in bit/sec.
+ * @property {number} maxAudioBandwidth
+ *   The maximum bandwidth of an audio track, in bit/sec.
+ * @property {number} minVideoBandwidth
+ *   The minimum bandwidth of a video track, in bit/sec.
+ * @property {number} maxVideoBandwidth
+ *   The maximum bandwidth of a video track, in bit/sec.
+ * @exportDoc
+ */
+shakaExtern.Restrictions;
 
 
 /**
@@ -219,7 +269,7 @@ shakaExtern.AdvancedDrmConfiguration;
  *   A dictionary which maps key system IDs to their license servers.
  *   For example, {'com.widevine.alpha': 'http://example.com/drm'}.
  * @property {!Object.<string, string>} clearKeys
- *   <i>Only usable by the clear key CDM.</i> <br>
+ *   <i>Forces the use of the Clear Key CDM.</i>
  *   A map of key IDs (hex) to keys (hex).
  * @property {Object.<string, shakaExtern.AdvancedDrmConfiguration>} advanced
  *   <i>Optional.</i> <br>
@@ -296,13 +346,32 @@ shakaExtern.StreamingConfiguration;
 
 /**
  * @typedef {{
+ *   manager: shakaExtern.AbrManager,
+ *   enabled: boolean,
+ *   defaultBandwidthEstimate: number
+ * }}
+ *
+ * @property {shakaExtern.AbrManager} manager
+ *   The AbrManager instance.
+ * @property {boolean} enabled
+ *   If true, enable adaptation by the current AbrManager.  Defaults to true.
+ * @property {number} defaultBandwidthEstimate
+ *   The default bandwidth estimate to use if there is not enough data, in
+ *   bit/sec.
+ * @exportDoc
+ */
+shakaExtern.AbrConfiguration;
+
+
+/**
+ * @typedef {{
  *   drm: shakaExtern.DrmConfiguration,
  *   manifest: shakaExtern.ManifestConfiguration,
  *   streaming: shakaExtern.StreamingConfiguration,
- *   abrManager: shakaExtern.AbrManager,
- *   enableAdaptation: boolean,
+ *   abr: shakaExtern.AbrConfiguration,
  *   preferredAudioLanguage: string,
- *   preferredTextLanguage: string
+ *   preferredTextLanguage: string,
+ *   restrictions: shakaExtern.Restrictions
  * }}
  *
  * @property {shakaExtern.DrmConfiguration} drm
@@ -311,17 +380,22 @@ shakaExtern.StreamingConfiguration;
  *   Manifest configuration and settings.
  * @property {shakaExtern.StreamingConfiguration} streaming
  *   Streaming configuration and settings.
- * @property {shakaExtern.AbrManager} abrManager
- *   The AbrManager instance.
- * @property {boolean} enableAdaptation
- *   If true, enable adaptation by the current AbrManager.  Defaults to true.
+ * @property {shakaExtern.AbrConfiguration} abr
+ *   ABR configuration and settings.
  * @property {string} preferredAudioLanguage
  *   The preferred language to use for audio tracks.  If not given it will use
  *   the 'main' track.
+ *   Changing this during playback will cause the language selection algorithm
+ *   to run again, and may change the active audio track.
  * @property {string} preferredTextLanguage
- *   The preferred language to use for text tracks.  If the audio and text
- *   tracks have different languages, the text track will be enabled.
- *
+ *   The preferred language to use for text tracks.  If a matching text track
+ *   is found, and the selected audio and text tracks have different languages,
+ *   the text track will be shown.
+ *   Changing this during playback will cause the language selection algorithm
+ *   to run again, and may change the active text track.
+ * @property {shakaExtern.Restrictions} restrictions
+ *   The application restrictions to apply to the tracks.  The track must
+ *   meet all the restrictions to be playable.
  * @exportDoc
  */
 shakaExtern.PlayerConfiguration;

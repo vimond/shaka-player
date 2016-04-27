@@ -87,6 +87,40 @@ describe('Player', function() {
     document.body.removeChild(video);
   });
 
+  it('gives stats about current stream', function(done) {
+    // This is tested more in player_unit.js.  This is here to test the public
+    // API and to check for renaming.
+    var asset = '//storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd';
+
+    player.load(asset).then(function() {
+      video.play();
+      return waitForEvent(video, 'timeupdate', 10);
+    }).then(function() {
+      var stats = player.getStats();
+      var expected = {
+        width: jasmine.any(Number),
+        height: jasmine.any(Number),
+        streamBandwidth: jasmine.any(Number),
+
+        decodedFrames: jasmine.any(Number),
+        droppedFrames: jasmine.any(Number),
+        estimatedBandwidth: jasmine.any(Number),
+        playTime: jasmine.any(Number),
+        bufferingTime: jasmine.any(Number),
+
+        // We should have loaded the first Period by now, so we should have a
+        // history.
+        switchHistory: jasmine.arrayContaining([{
+          timestamp: jasmine.any(Number),
+          id: jasmine.any(Number),
+          type: 'video',
+          fromAdaptation: true
+        }])
+      };
+      expect(stats).toEqual(expected);
+    }).catch(fail).then(done);
+  });
+
   describe('plays', function() {
     window.shakaAssets.testAssets.forEach(function(asset) {
       if (asset.disabled) return;
@@ -117,8 +151,8 @@ describe('Player', function() {
 
         var isLive = asset.features.indexOf(Feature.LIVE) >= 0;
 
-        var config = { drm: {}, manifest: { dash: {} } };
-        config.enableAdaptation = false;
+        var config = { abr: {}, drm: {}, manifest: { dash: {} } };
+        config.abr.enabled = false;
         if (asset.licenseServers)
           config.drm.servers = asset.licenseServers;
         if (asset.drmCallback)
@@ -147,7 +181,7 @@ describe('Player', function() {
           return waitForTimeOrEnd(video, 30);
         }).then(function() {
           if (video.ended) {
-            expect(video.currentTime).toBeCloseTo(video.duration);
+            expect(video.currentTime).toBeCloseTo(video.duration, 0.1);
           } else {
             expect(video.currentTime).toBeGreaterThan(20);
             // If it were very close to duration, why !video.ended?
@@ -159,7 +193,7 @@ describe('Player', function() {
               // 30 seconds or video ended, whichever comes first.
               return waitForTimeOrEnd(video, 30).then(function() {
                 expect(video.ended).toBe(true);
-                expect(video.currentTime).toBeCloseTo(video.duration);
+                expect(video.currentTime).toBeCloseTo(video.duration, 0.1);
               });
             }
           }

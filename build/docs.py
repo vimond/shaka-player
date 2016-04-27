@@ -25,6 +25,8 @@ import subprocess
 import sys
 
 def buildDocs(_):
+  print 'Building the docs...'
+
   base = shakaBuildHelpers.getSourceBase()
   shutil.rmtree(os.path.join(base, 'docs', 'api'), ignore_errors=True)
   os.chdir(base)
@@ -36,7 +38,7 @@ def buildDocs(_):
   else:
     jsdoc = os.path.join('third_party', 'jsdoc', 'jsdoc')
 
-  cmdLine = [jsdoc, '-c', 'jsdoc.conf.json']
+  cmdLine = [jsdoc, '-c', 'docs/jsdoc.conf.json', '-R', 'docs/api-mainpage.md']
   shakaBuildHelpers.printCmdLine(cmdLine)
   return subprocess.call(cmdLine)
 

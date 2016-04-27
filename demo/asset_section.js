@@ -111,7 +111,8 @@ shakaDemo.load = function() {
   var asset = option.asset;
   var player = shakaDemo.player_;
 
-  var config = { drm: {}, manifest: { dash: {} } };
+  var config = /** @type {shakaExtern.PlayerConfiguration} */(
+      { abr: {}, drm: {}, manifest: { dash: {} } });
 
   if (!asset) {
     // Use the custom fields.
@@ -142,11 +143,11 @@ shakaDemo.load = function() {
       document.getElementById('preferredAudioLanguage').value;
   config.preferredTextLanguage =
       document.getElementById('preferredTextLanguage').value;
-  config.enableAdaptation =
+  config.abr.enabled =
       document.getElementById('enableAdaptation').checked;
 
-  player.configure(/** @type {shakaExtern.PlayerConfiguration} */(
-      config));
+  player.resetConfiguration();
+  player.configure(config);
 
   // Configure network filters.
   var networkingEngine = player.getNetworkingEngine();
@@ -164,7 +165,12 @@ shakaDemo.load = function() {
   }
 
   // Load the manifest.
-  player.load(asset.manifestUri).catch(function(reason) {
+  player.load(asset.manifestUri).then(function() {
+    (asset.extraText || []).forEach(function(extraText) {
+      player.addTextTrack(extraText.uri, extraText.language, extraText.kind,
+                          extraText.mime, extraText.codecs);
+    });
+  }, function(reason) {
     var error = /** @type {!shaka.util.Error} */(reason);
     shakaDemo.onError_(error);
   });

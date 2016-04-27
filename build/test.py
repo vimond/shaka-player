@@ -25,16 +25,24 @@ import sys
 def runTests(args):
   """Runs all the karma tests."""
   # Update node modules if needed.
-  shakaBuildHelpers.updateNodeModules()
+  if not shakaBuildHelpers.updateNodeModules():
+    return 1
 
   # Generate dependencies and compile library.
   # This is required for the tests.
-  print 'Generating dependencies...'
   if gendeps.genDeps([]) != 0:
     return 1
-  print 'Compiling the library...'
-  if build.main([]) != 0:
-    return 1
+
+  build_args = []
+  if '--force' in args:
+    build_args.append('--force')
+    args.remove('--force')
+
+  if '--no-build' in args:
+    args.remove('--no-build')
+  else:
+    if build.main(build_args) != 0:
+      return 1
 
   karma_command_name = 'karma'
   if shakaBuildHelpers.isWindows():

@@ -440,9 +440,10 @@ describe('StreamingEngine', function() {
       onStartupComplete.and.callFake(function() {
         // firstSegmentNumber =
         //   [(segmentAvailabilityEnd - rebufferingGoal) / segmentDuration] + 1
+        // Then -1 to account for drift safe buffering.
         var segmentType = shaka.net.NetworkingEngine.RequestType.SEGMENT;
-        netEngine.expectRequest('1_video_24', segmentType);
-        netEngine.expectRequest('1_audio_29', segmentType);
+        netEngine.expectRequest('1_video_23', segmentType);
+        netEngine.expectRequest('1_audio_28', segmentType);
         video.play();
       });
 
@@ -464,9 +465,13 @@ describe('StreamingEngine', function() {
       onStartupComplete.and.callFake(function() {
         video.play();
 
-        // Seek outside the availability window right away. The playhead
-        // should adjust the video's current time.
-        video.currentTime = timeline.segmentAvailabilityEnd + 120;
+        // Use setTimeout to ensure the playhead has performed it's initial
+        // seeking.
+        setTimeout(function() {
+          // Seek outside the availability window right away. The playhead
+          // should adjust the video's current time.
+          video.currentTime = timeline.segmentAvailabilityEnd + 120;
+        }, 50);
       });
 
       var onTimeUpdate = function() {
@@ -487,10 +492,14 @@ describe('StreamingEngine', function() {
       onStartupComplete.and.callFake(function() {
         video.play();
 
-        // Seek outside the availability window right away. The playhead
-        // should adjust the video's current time.
-        video.currentTime = timeline.segmentAvailabilityStart - 120;
-        expect(video.currentTime).toBeGreaterThan(0);
+        // Use setTimeout to ensure the playhead has performed it's initial
+        // seeking.
+        setTimeout(function() {
+          // Seek outside the availability window right away. The playhead
+          // should adjust the video's current time.
+          video.currentTime = timeline.segmentAvailabilityStart - 120;
+          expect(video.currentTime).toBeGreaterThan(0);
+        }, 50);
       });
 
       var onTimeUpdate = function() {

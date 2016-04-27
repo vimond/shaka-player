@@ -56,31 +56,15 @@ describe('DrmEngine', function() {
   });
 
   beforeEach(function() {
-    manifest = {
-      periods: [{
-        streamSets: [{
-          type: 'video',
-          drmInfos: [{
-            keySystem: 'drm.abc',
-            distinctiveIdentifierRequired: false,
-            persistentStateRequired: false
-          }],
-          streams: [
-            {mimeType: 'video/foo', codecs: 'vbar'}
-          ]
-        },{
-          type: 'audio',
-          drmInfos: [{
-            keySystem: 'drm.def',
-            distinctiveIdentifierRequired: false,
-            persistentStateRequired: false
-          }],
-          streams: [
-            {mimeType: 'audio/foo', codecs: 'abar'}
-          ]
-        }]
-      }]
-    };
+    manifest = new shaka.test.ManifestGenerator()
+      .addPeriod(0)
+        .addStreamSet('video')
+          .addDrmInfo('drm.abc')
+          .addStream(0).mime('video/foo', 'vbar')
+        .addStreamSet('audio')
+          .addDrmInfo('drm.def')
+          .addStream(1).mime('audio/foo', 'abar')
+      .build();
 
     // Reset spies.
     requestMediaKeySystemAccessSpy.calls.reset();
@@ -243,7 +227,7 @@ describe('DrmEngine', function() {
             .toHaveBeenCalledWith('drm.abc', [jasmine.objectContaining({
               audioCapabilities: undefined,
               videoCapabilities: [jasmine.objectContaining({
-                contentType: 'video/foo'
+                contentType: 'video/foo; codecs="vbar"'
               })],
               distinctiveIdentifier: 'optional',
               persistentState: 'optional',
@@ -252,7 +236,7 @@ describe('DrmEngine', function() {
         expect(requestMediaKeySystemAccessSpy)
             .toHaveBeenCalledWith('drm.def', [jasmine.objectContaining({
               audioCapabilities: [jasmine.objectContaining({
-                contentType: 'audio/foo'
+                contentType: 'audio/foo; codecs="abar"'
               })],
               videoCapabilities: undefined,
               distinctiveIdentifier: 'optional',
@@ -338,10 +322,10 @@ describe('DrmEngine', function() {
         expect(requestMediaKeySystemAccessSpy)
             .toHaveBeenCalledWith('drm.abc', [jasmine.objectContaining({
               videoCapabilities: [jasmine.objectContaining({
-                contentType: 'video/foo'
+                contentType: 'video/foo; codecs="vbar"'
               })],
               audioCapabilities: [jasmine.objectContaining({
-                contentType: 'audio/foo'
+                contentType: 'audio/foo; codecs="abar"'
               })],
               distinctiveIdentifier: 'required'
             })]);
@@ -530,11 +514,11 @@ describe('DrmEngine', function() {
       }).catch(fail).then(done);
     });
 
-    it('uses clearKeys config for clearkey content', function(done) {
+    it('uses clearKeys config to override DrmInfo', function(done) {
       manifest.periods[0].streamSets[0].drmInfos[0].keySystem =
-          'org.w3.clearkey';
+          'com.fake.NOT.clearkey';
       manifest.periods[0].streamSets[1].drmInfos[0].keySystem =
-          'org.w3.clearkey';
+          'com.fake.NOT.clearkey';
       requestMediaKeySystemAccessSpy.and.callFake(
           fakeRequestMediaKeySystemAccess.bind(null, ['org.w3.clearkey']));
 
@@ -553,6 +537,13 @@ describe('DrmEngine', function() {
 
       initAndAttach().then(function() {
         var Uint8ArrayUtils = shaka.util.Uint8ArrayUtils;
+
+        expect(manifest.periods[0].streamSets[0].drmInfos.length).toBe(1);
+        expect(manifest.periods[0].streamSets[0].drmInfos[0].keySystem).
+            toBe('org.w3.clearkey');
+        expect(manifest.periods[0].streamSets[1].drmInfos.length).toBe(1);
+        expect(manifest.periods[0].streamSets[1].drmInfos[0].keySystem).
+            toBe('org.w3.clearkey');
 
         expect(session.generateRequest).
             toHaveBeenCalledWith('keyids', jasmine.any(ArrayBuffer));
@@ -876,9 +867,9 @@ describe('DrmEngine', function() {
       }).catch(fail).then(done);
     });
 
-    it('uses clearKeys config for clearkey content', function(done) {
+    it('uses clearKeys config to override DrmInfo', function(done) {
       manifest.periods[0].streamSets[0].drmInfos[0].keySystem =
-          'org.w3.clearkey';
+          'com.fake.NOT.clearkey';
       requestMediaKeySystemAccessSpy.and.callFake(
           fakeRequestMediaKeySystemAccess.bind(null, ['org.w3.clearkey']));
 

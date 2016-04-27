@@ -32,6 +32,10 @@ shakaDemo.player_ = null;
 shakaDemo.support_;
 
 
+/** @private {ShakaControls} */
+shakaDemo.controls_ = null;
+
+
 /**
  * Initialize the application.
  */
@@ -106,6 +110,9 @@ shakaDemo.init = function() {
       shakaDemo.setupConfiguration_();
       shakaDemo.setupInfo_();
 
+      shakaDemo.controls_ = new ShakaControls();
+      shakaDemo.controls_.init(shakaDemo.video_, shakaDemo.player_);
+
       // If a custom asset was given in the URL, select it now.
       if ('asset' in params) {
         var assetList = document.getElementById('assetList');
@@ -138,7 +145,7 @@ shakaDemo.onErrorEvent_ = function(event) {
  */
 shakaDemo.onError_ = function(error) {
   console.error('Player error', error);
-  var message = 'Error code ' + error.code;
+  var message = error.message || ('Error code ' + error.code);
   var errorDisplay = document.getElementById('errorDisplay');
   errorDisplay.textContent = message;
 };

@@ -26,6 +26,9 @@ describe('Playhead', function() {
   // Callback to Playhead to simulate 'seeking' event from |video|.
   var videoOnSeeking;
 
+  // Callback to Playhead to simulate 'ratechange' event from |video|.
+  var videoOnRateChange;
+
   // Callback to us from Playhead when the buffering state changes.
   var onBuffering;
 
@@ -47,11 +50,14 @@ describe('Playhead', function() {
         videoOnLoadedMetadata = f;
       } else if (eventName == 'seeking') {
         videoOnSeeking = f;
+      } else if (eventName == 'ratechange') {
+        videoOnRateChange = f;
       } else {
         throw new Error('Unexpected event:' + eventName);
       }
     });
 
+    timeline.getEarliestStart.and.returnValue(5);
     timeline.getSegmentAvailabilityStart.and.returnValue(5);
     timeline.getSegmentAvailabilityEnd.and.returnValue(60);
 
@@ -77,7 +83,7 @@ describe('Playhead', function() {
 
       expect(video.addEventListener).toHaveBeenCalledWith(
           'loadedmetadata', videoOnLoadedMetadata, false);
-      expect(video.addEventListener.calls.count()).toBe(1);
+      expect(video.addEventListener.calls.count()).toBe(2);
 
       expect(playhead.getTime()).toBe(5);
       expect(video.currentTime).toBe(0);
@@ -87,7 +93,7 @@ describe('Playhead', function() {
 
       expect(video.addEventListener).toHaveBeenCalledWith(
           'seeking', videoOnSeeking, false);
-      expect(video.addEventListener.calls.count()).toBe(2);
+      expect(video.addEventListener.calls.count()).toBe(3);
 
       expect(playhead.getTime()).toBe(5);
       expect(video.currentTime).toBe(5);
@@ -132,6 +138,7 @@ describe('Playhead', function() {
 
     // Set to 2 to ensure Playhead restores the correct rate.
     video.playbackRate = 2;
+    videoOnRateChange();
 
     playhead.setBuffering(false);
     expect(onBuffering).not.toHaveBeenCalled();
@@ -167,6 +174,7 @@ describe('Playhead', function() {
       }
     };
 
+    timeline.getEarliestStart.and.returnValue(5);
     timeline.getSegmentAvailabilityStart.and.returnValue(5);
     timeline.getSegmentAvailabilityEnd.and.returnValue(60);
     timeline.getSegmentAvailabilityDuration.and.returnValue(30);
@@ -178,12 +186,13 @@ describe('Playhead', function() {
         5 /* startTime */,
         onBuffering, onSeek);
 
-    expect(playhead.getTime()).toBe(5);
-    expect(video.currentTime).toBe(5);
-
     // Calling videoOnSeeking() is like dispatching a 'seeking' event. So, each
     // time we change the video's current time or Playhead changes the video's
     // current time we must call videoOnSeeking(),
+
+    videoOnSeeking();
+    expect(video.currentTime).toBe(5);
+    expect(playhead.getTime()).toBe(5);
 
     // left = start + 1 = 5 + 1 = 6
     // safe = left + rebufferingGoal = 6 + 10 = 16
@@ -318,6 +327,7 @@ describe('Playhead', function() {
       }
     };
 
+    timeline.getEarliestStart.and.returnValue(5);
     timeline.getSegmentAvailabilityStart.and.returnValue(5);
     timeline.getSegmentAvailabilityEnd.and.returnValue(60);
     timeline.getSegmentAvailabilityDuration.and.returnValue(null);
@@ -329,8 +339,9 @@ describe('Playhead', function() {
         5 /* startTime */,
         onBuffering, onSeek);
 
-    expect(playhead.getTime()).toBe(5);
+    videoOnSeeking();
     expect(video.currentTime).toBe(5);
+    expect(playhead.getTime()).toBe(5);
 
     // Seek past end.
     video.currentTime = 120;
@@ -371,6 +382,7 @@ describe('Playhead', function() {
       setDuration: jasmine.createSpy('setDuration'),
       getSegmentAvailabilityDuration:
           jasmine.createSpy('getSegmentAvailabilityDuration'),
+      getEarliestStart: jasmine.createSpy('getEarliestStart'),
       getSegmentAvailabilityStart:
           jasmine.createSpy('getSegmentAvailabilityStart'),
       getSegmentAvailabilityEnd:

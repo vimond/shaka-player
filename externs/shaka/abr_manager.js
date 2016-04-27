@@ -94,11 +94,20 @@ shakaExtern.AbrManager.prototype.stop = function() {};
 
 
 /**
- * Gets an estimate of the current bandwidth in kbit/sec.  This is used by the
+ * Gets an estimate of the current bandwidth in bit/sec.  This is used by the
  * Player to generate stats.
  *
  * @return {number}
  * @exportDoc
  */
 shakaExtern.AbrManager.prototype.getBandwidthEstimate = function() {};
+
+
+/**
+ * Sets the default bandwidth estimate to use if there is not enough data.
+ *
+ * @param {number} estimate The default bandwidth estimate, in bit/sec.
+ * @exportDoc
+ */
+shakaExtern.AbrManager.prototype.setDefaultEstimate = function(estimate) {};
 

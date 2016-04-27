@@ -271,7 +271,8 @@ class Build:
           print 'No changes detected, not building.  Use --force to override.'
           return True
 
-    opts = ['--create_source_map', resultMap, '--js_output_file', resultDebug]
+    opts = ['--create_source_map', resultMap, '--js_output_file', resultDebug,
+            '--source_map_location_mapping', sourceBase + '|..']
     if not self.buildRaw(opts):
       return False
 
@@ -323,6 +324,7 @@ def main(args):
   if len(lines) == 0:
     lines = ['+@complete']
 
+  print 'Compiling the library...'
   customBuild = Build()
   if not customBuild.parseBuild(lines, os.getcwd()):
     return 1
