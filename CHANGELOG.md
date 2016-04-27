@@ -1,3 +1,24 @@
+## 1.6.5 (2016-04-08)
+
+Bugfixes:
+  - Always build the same input files to a stable output
+    - https://github.com/google/shaka-player/pull/299
+  - Properly extern the 'xhr' property of HTTP errors
+    - https://github.com/google/shaka-player/pull/319
+
+
+## 1.6.4 (2016-03-03)
+
+Bugfixes:
+  - Updated Promise polyfill with fixes backported from v2
+  - Fixed Edge EME compatibility & InvalidStateErrors
+    - https://github.com/google/shaka-player/issues/282
+  - Fixed HttpVideoSource use with clear content (Thanks, Sanborn!)
+    - https://github.com/google/shaka-player/pull/292
+  - Fixed uncompiled-mode performance regression introduced in v1.6.3
+    - https://github.com/google/shaka-player/issues/288
+
+
 ## 1.6.3 (2016-02-08)
 
 Features:
