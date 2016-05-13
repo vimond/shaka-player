@@ -70,7 +70,7 @@ describe('Live', function() {
     // Cloud Storage to simulate dynamically generated MPDs.
     // Note: currentTime - @availabilityStartTime must be at least as long as
     // the video.
-    var availabilityStartTime = (Date.now() / 1000.0) - 300;
+    var availabilityStartTime = (new Date().getTime() / 1000.0) - 300;
     originalSend = shaka.dash.MpdRequest.prototype.send;
     shaka.dash.MpdRequest.prototype.send = function() {
       return originalSend.call(this).then(
