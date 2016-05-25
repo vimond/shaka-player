@@ -101,6 +101,10 @@ The `isLive()` transition from `true` to `false` enables integrators to make the
 
 Otherwise `shaka.log.Level.DEBUG` etc. became uglified during build.
 
+### Exposed shaka.player.Restrictions for external usage
+
+This is needed for overriding adaptive bitrate. Appears to be a miss in the original code base.
+
 ### Demo page additions
 
 * Configuration text area that can parse a JSON string and apply it as the ManifestModificationSetup parameter mentioned above.
