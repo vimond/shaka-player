@@ -8,6 +8,7 @@ goog.provide('shaka.vimond.dash.PreprocessableMpdRequest');
 goog.require('shaka.dash.MpdRequest');
 goog.require('shaka.dash.mpd');
 goog.require('shaka.vimond.dash.ManifestTextPreprocessor');
+goog.require('shaka.vimond.dash.SerialBigIntegerEliminator');
 goog.require('shaka.player.Defaults');
 goog.require('shaka.util.AjaxRequest');
 goog.require('shaka.util.FailoverUri');
@@ -45,7 +46,7 @@ goog.inherits(shaka.vimond.dash.PreprocessableMpdRequest, shaka.dash.MpdRequest)
 shaka.vimond.dash.PreprocessableMpdRequest.prototype.send = function() {
     var url = this.url_;
     return url.fetch(this.parameters_).then(function(data) {
-            var mpd = shaka.dash.mpd.parseMpd(this.manifestTextPreprocessor_.process(data), url.urls, [url.currentUrl]);
+            var mpd = shaka.dash.mpd.parseMpd(this.fixBigIntegers_(this.manifestTextPreprocessor_.process(data)), url.urls, [url.currentUrl]);
             if (mpd) {
                 return Promise.resolve(this.applyPresentationTimeOffsetFix_(mpd));
             }
@@ -55,6 +56,25 @@ shaka.vimond.dash.PreprocessableMpdRequest.prototype.send = function() {
             return Promise.reject(error);
         }.bind(this));
 };
+
+
+
+
+/**
+ * Applies workarounds for big numbers in offsets and time codes
+ * @param {string} manifest
+ * @returns {string}
+ */
+shaka.vimond.dash.PreprocessableMpdRequest.prototype.fixBigIntegers_ = function(manifest) {
+    "use strict";
+    if (this.modificationSetup_ && this.modificationSetup_.bigIntegersFixPolicy) {
+        return shaka.vimond.dash.SerialBigIntegerEliminator.eliminate(manifest);
+    } else {
+        return manifest;
+    }
+};
+
+
 
 /**
  * If a presentationTimeOffset fix policy is specified, applies such a fix if needed, by mutating the Mpd instance.
