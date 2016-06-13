@@ -768,6 +768,10 @@ app.loadDashStream = function() {
       app.estimator_ = new shaka.util.EWMABandwidthEstimator();
     }
 
+    extendedConfig = extendedConfig || {};
+    extendedConfig.manifestModifier = extendedConfig.manifestModifier || {};
+    //extendedConfig.manifestModifier.bigIntegersFixPolicy = 'default';
+    
     var estimator = /** @type {!shaka.util.IBandwidthEstimator} */(
         app.estimator_);
     var abrManager = new shaka.media.SimpleAbrManager();
