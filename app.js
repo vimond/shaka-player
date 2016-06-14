@@ -770,7 +770,7 @@ app.loadDashStream = function() {
 
     extendedConfig = extendedConfig || {};
     extendedConfig.manifestModifier = extendedConfig.manifestModifier || {};
-    //extendedConfig.manifestModifier.bigIntegersFixPolicy = 'default';
+    extendedConfig.manifestModifier.bigIntegersFixPolicy = 'default';
     
     var estimator = /** @type {!shaka.util.IBandwidthEstimator} */(
         app.estimator_);

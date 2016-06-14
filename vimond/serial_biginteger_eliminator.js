@@ -5,9 +5,10 @@
  */
 
 goog.provide('shaka.vimond.dash.SerialBigIntegerEliminator');
+goog.require('shaka.log');
 
 shaka.vimond.dash.SerialBigIntegerEliminator.MANIFEST_ELIGIBILITY_REGEX = 
-    /availabilityStartTime="([A-Z]|[0-9]|-|\+|:|\.)+"((.|\n)*) t="[0-9]{16,}"/g;
+    /availabilityStartTime="([A-Z]|[0-9]|-|\+|:|\.)+"((.|\n)*) t="[0-9]{16,}"/;
 
 shaka.vimond.dash.SerialBigIntegerEliminator.MANIFEST_REPLACEMENT_REGEX =
     /(availabilityStartTime)="(?:.*?)"|<(SegmentTemplate) |(presentationTimeOffset)="[0-9]*?"|(timescale)="[0-9]*?"| (t)="[0-9]*?"/g;
@@ -28,7 +29,7 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
             originalIsoDateStr = getAttributeValue(match);
             originalAvailabilityStartTimeSeconds = new Date(originalIsoDateStr).getTime() / 1000;
         } catch(e) {
-            console.log('Parse date failed.', e);    
+            shaka.log.warning('Parse date failed.', e);    
         }
         if (originalAvailabilityStartTimeSeconds) {
             adjustedAvailabilityStartTimeSeconds = (Math.floor(originalAvailabilityStartTimeSeconds / 86400) - 1) * 86400;
@@ -58,7 +59,7 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
         try {
             timescale = parseInt(getAttributeValue(match), 10);
         } catch(e) {
-            console.log('Parse timescale failed.', e);
+            shaka.log.warning('Parse timescale failed.', e);
         }
         
         return {
@@ -73,7 +74,7 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
         try {
             presentationTimeOffset = parseInt(getAttributeValue(match), 10);
         } catch(e) {
-            console.log('Parse timescale presentationTimeOffset.', e);
+            shaka.log.warning('Parse presentationTimeOffset failed.', e);
         }
         return {
             updatedState: {
@@ -91,8 +92,9 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
                 adjustedScaledStartOffset = originalScaledNetOffset.add(startTimeDifferenceSeconds * state.currentTimescale).toJSNumber();
 
             adjustedStartOffsetStr = ' t="' + adjustedScaledStartOffset + '" _t="' + originalScaledStartOffsetStr + '"';
+            shaka.log.info('Adjusting start offset to JS compatible integer, and keeping the old one.', adjustedStartOffsetStr);
         } catch(e) {
-            console.log('Start offset adjustment failed.', e);
+            shaka.log.warning('Start offset adjustment failed.', e);
         }
         
         return {
