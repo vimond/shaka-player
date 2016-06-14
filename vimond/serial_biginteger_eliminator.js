@@ -61,7 +61,6 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
         } catch(e) {
             shaka.log.warning('Parse timescale failed.', e);
         }
-        
         return {
             updatedState: {
                 currentTimescale: timescale 
@@ -87,11 +86,42 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
         var adjustedStartOffsetStr = match;
         try {
             var originalScaledStartOffsetStr = getAttributeValue(match) || 0,
-                originalScaledNetOffset = bigInt(originalScaledStartOffsetStr || 0).subtract(state.currentPresentationTimeOffset || 0), // The scaled time from availabilityst
+                originalScaledOffset = bigInt(originalScaledStartOffsetStr || 0),
+                originalScaledNetOffset = originalScaledOffset.subtract(state.currentPresentationTimeOffset || 0), // The scaled time from availabilityst
                 startTimeDifferenceSeconds = state.originalAvailabilityStartTimeSeconds - state.adjustedAvailabilityStartTimeSeconds,
-                adjustedScaledStartOffset = originalScaledNetOffset.add(startTimeDifferenceSeconds * state.currentTimescale).toJSNumber();
+                adjustedScaledStartOffset = originalScaledNetOffset.add(startTimeDifferenceSeconds * state.currentTimescale).toJSNumber(),
+                timestampOffset = state.adjustedAvailabilityStartTimeSeconds + bigInt(state.currentPresentationTimeOffset).divide(state.currentTimescale).toJSNumber() - state.originalAvailabilityStartTimeSeconds;
 
-            adjustedStartOffsetStr = ' t="' + adjustedScaledStartOffset + '" _t="' + originalScaledStartOffsetStr + '"';
+            /*
+            window.presentationTimeOffset = bigInt(state.currentPresentationTimeOffset).divide(state.currentTimescale).toJSNumber();
+            window.originalStartOffset = bigInt(originalScaledOffset).divide(state.currentTimescale).toJSNumber();
+            window.originalNetOffset = bigInt(originalScaledNetOffset).divide(state.currentTimescale).toJSNumber();
+            window.originalAvailabilityStartTimeSeconds = state.originalAvailabilityStartTimeSeconds;
+            window.adjustedAvailabilityStartTimeSeconds = state.adjustedAvailabilityStartTimeSeconds;
+            window.desired = 1465736399;
+            
+            console.table([{
+                key: 'presentationTimeOffset',
+                value: window.presentationTimeOffset
+            },{
+                key: 'originalStartOffset',
+                value: window.originalStartOffset
+            },{
+                key: 'originalNetOffset',
+                value: window.originalNetOffset
+            },{
+                key: 'originalAvailabilityStartTimeSeconds',
+                value: window.originalAvailabilityStartTimeSeconds
+            },{
+                key: 'adjustedAvailabilityStartTimeSeconds',
+                value: window.adjustedAvailabilityStartTimeSeconds
+            },{
+                key: 'desired',
+                value: window.desired
+            }]);
+            */
+            
+            adjustedStartOffsetStr = ' t="' + adjustedScaledStartOffset + '" _t="' + originalScaledStartOffsetStr + '" _timestampOffset="' + timestampOffset.toString() + '"';
             shaka.log.info('Adjusting start offset to JS compatible integer, and keeping the old one.', adjustedStartOffsetStr);
         } catch(e) {
             shaka.log.warning('Start offset adjustment failed.', e);

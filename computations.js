@@ -1,5 +1,5 @@
-"use strict";
 
+"use strict";
 function pad(num) {
     return num > 9 ? num : '0' + num.toString();
 
@@ -37,9 +37,20 @@ function getParameters() {
 function getOriginal() {
     return {
         availabilityStartTime: '2016-06-09T01:39:11Z',
-        presentationTimeOffset: '14653967524906445',
+        presentationTimeOffset: '14653967524906444',
         timescale: 10000000,
-        startOffset: '14654880262200001',
+        startOffset: '14657874020800000',
+        segmentDuration: '19200000',
+        repeat: 3715
+    };
+}
+
+function getOriginal2() {
+    return {
+        availabilityStartTime: '2016-06-09T01:39:11Z',
+        presentationTimeOffset: '14653967524906444',
+        timescale: 10000000,
+        startOffset: '14657874020720001',
         segmentDuration: '19200000',
         repeat: 3715
     };
@@ -55,6 +66,10 @@ function computeEdgeBigInt(input) {
     return edge;
 }
 
+function scaled(str) {
+    return parseInt(str.substr(0, str.length - 7), 10);
+}
+
 function computeEdge(input) {
     var availabilityStartTimeSeconds = new Date(input.availabilityStartTime).getTime() / 1000;
 
@@ -62,6 +77,15 @@ function computeEdge(input) {
 
     var edge = new Date((availabilityStartTimeSeconds + timelineLengthSeconds) * 1000);
     return edge;
+}
+
+function computeStart(input) {
+    var availabilityStartTimeSeconds = new Date(input.availabilityStartTime).getTime() / 1000;
+
+    var timelineStartOffsetSeconds = (parseInt(input.startOffset, 10) - parseInt(input.presentationTimeOffset, 10)) / parseInt(input.timescale, 10);
+
+    var start = new Date((availabilityStartTimeSeconds + timelineStartOffsetSeconds) * 1000);
+    return start;
 }
 
 function computeEdgeTimeCode(input) {

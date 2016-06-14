@@ -721,7 +721,13 @@ app.loadStream = function() {
   window.localStorage.setItem('shakaManifestUrl', document.getElementById('manifestUrlInput').value);
 };
 
-
+/**
+ * Unloads stream.
+ */
+app.unloadStream = function() {
+  app.player_.unload();
+};
+  
 /**
  * Loads an http stream.
  */

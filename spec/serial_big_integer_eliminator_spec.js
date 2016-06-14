@@ -38,9 +38,12 @@ describe('SerialBigIntegerEliminator', function() {
         adjustedAvailabilityStartTimeStr = ' availabilityStartTime="2016-06-08T00:00:00.000Z"',
         adjustedPresentationTimeOffsetMatch = /presentationTimeOffset="0"/g,
         copyOfOriginalStartOffsetMatch = / _t="([0-9]*?)"/g,
+        timestampOffsetMatch = / _timestampOffset="(-)?([0-9]*?)"/g,
         adjustedStartOffsetMatch = / t="([0-9]*?)"/g,
         originalStartOffsets = [' _t="14654880262200001"', ' _t="14654880262026667"'],
-        adjustedStartOffsets = [' t="1836247293557"', ' t="1836247120223"'];
+        adjustedStartOffsets = [' t="1836247293557"', ' t="1836247120223"'],
+        timestampOffsets = [' _timestampOffset="1465304401"', ' _timestampOffset="1465304401"'];
+        timestampOffsets = [' _timestampOffset="1465304401"', ' _timestampOffset="1465304401"'];
     
     describe('eliminate', function () {
         var adjusted;
@@ -60,7 +63,7 @@ describe('SerialBigIntegerEliminator', function() {
             expect(copyOfOriginalPos).toBeLessThan(periodPos);
             expect(adjustedAttributePos).toBeLessThan(periodPos);
         });
-        it('resets the presentationTimeOffsets to 0 for increased simplicity in adjustments.', function () {
+        it('resets the presentationTimeOffsets to 0 for increased simplicity in adjustments, but keep the original one.', function () {
             var matches = adjusted.match(adjustedPresentationTimeOffsetMatch);
             expect(matches.length).toBe(2);
         });
@@ -73,10 +76,17 @@ describe('SerialBigIntegerEliminator', function() {
         });
         it('keeps copies of the original startOffsets for later correct segment URL resolution.', function () {
             var matches = adjusted.match(copyOfOriginalStartOffsetMatch);
+            console.log(adjusted);
             expect(matches[0]).toBe(originalStartOffsets[0]);
             expect(matches[1]).toBe(originalStartOffsets[1]);
         });
-        
+
+        it('contains timestamp offsets for time codes not being aligned to Unix epoch time.', function () {
+            var matches = adjusted.match(timestampOffsetMatch);
+            expect(matches[0]).toBe(timestampOffsets[0]);
+            expect(matches[1]).toBe(timestampOffsets[1]);
+        });
+
         /*
         it('can operate on SegmentTemplates on every level allowed.', function () {
             // Period, AdaptationSet, Representation
