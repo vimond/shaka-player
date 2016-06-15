@@ -6,6 +6,7 @@
 
 goog.provide('shaka.vimond.dash.SerialBigIntegerEliminator');
 goog.require('shaka.log');
+goog.require('shaka.vimond.Integer');
 
 shaka.vimond.dash.SerialBigIntegerEliminator.MANIFEST_ELIGIBILITY_REGEX = 
     /availabilityStartTime="([A-Z]|[0-9]|-|\+|:|\.)+"((.|\n)*) t="[0-9]{16,}"/;
@@ -86,16 +87,16 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
         var adjustedStartOffsetStr = match;
         try {
             var originalScaledStartOffsetStr = getAttributeValue(match) || 0,
-                originalScaledOffset = bigInt(originalScaledStartOffsetStr || 0),
+                originalScaledOffset = shaka.vimond.Integer.create(originalScaledStartOffsetStr || 0),
                 originalScaledNetOffset = originalScaledOffset.subtract(state.currentPresentationTimeOffset || 0), // The scaled time from availabilityst
                 startTimeDifferenceSeconds = state.originalAvailabilityStartTimeSeconds - state.adjustedAvailabilityStartTimeSeconds,
                 adjustedScaledStartOffset = originalScaledNetOffset.add(startTimeDifferenceSeconds * state.currentTimescale).toJSNumber(),
-                timestampOffset = state.adjustedAvailabilityStartTimeSeconds + bigInt(state.currentPresentationTimeOffset).divide(state.currentTimescale).toJSNumber() - state.originalAvailabilityStartTimeSeconds;
+                timestampOffset = state.adjustedAvailabilityStartTimeSeconds + shaka.vimond.Integer.create(state.currentPresentationTimeOffset).divide(state.currentTimescale).toJSNumber() - state.originalAvailabilityStartTimeSeconds;
 
             /*
-            window.presentationTimeOffset = bigInt(state.currentPresentationTimeOffset).divide(state.currentTimescale).toJSNumber();
-            window.originalStartOffset = bigInt(originalScaledOffset).divide(state.currentTimescale).toJSNumber();
-            window.originalNetOffset = bigInt(originalScaledNetOffset).divide(state.currentTimescale).toJSNumber();
+            window.presentationTimeOffset = shaka.vimond.Integer.create(state.currentPresentationTimeOffset).divide(state.currentTimescale).toJSNumber();
+            window.originalStartOffset = shaka.vimond.Integer.create(originalScaledOffset).divide(state.currentTimescale).toJSNumber();
+            window.originalNetOffset = shaka.vimond.Integer.create(originalScaledNetOffset).divide(state.currentTimescale).toJSNumber();
             window.originalAvailabilityStartTimeSeconds = state.originalAvailabilityStartTimeSeconds;
             window.adjustedAvailabilityStartTimeSeconds = state.adjustedAvailabilityStartTimeSeconds;
             window.desired = 1465736399;

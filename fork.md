@@ -29,6 +29,14 @@ This is a regex based manipulation of the DASH XML manifest after download, and 
 
 One or more manipulations can be added by specifying an array in the ManifestModificationSetup property `replacements`. The item(s) should align to the type [shaka.vimond.dash.ReplacementRule](https://github.com/vimond/shaka-player/blob/manifestmodifier/vimond/replacement_rule.js), with this structure:
 
+### Big integer timecode workaround
+
+This includes including a big integer third party library, manifest text processing with regexes, and reapplying correct offsets closer to the playback and segment URL resolution.
+
+Should be completely inactive until activated with the ManifestModificationSetup property `bigIntegersFixPolicy` set to `'default'`.
+
+To be documented later.
+
 
 ```Javascript
 {
