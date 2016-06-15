@@ -24,7 +24,7 @@ function getAttributeValue(str) {
 }
 
 shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
-    availabilityStartTime: function processAvailabilityStartTime(state, match) {
+    'availabilityStartTime': function processAvailabilityStartTime(state, match) {
         var originalIsoDateStr, originalAvailabilityStartTimeSeconds, adjustedAvailabilityStartTimeSeconds, adjustedAvailabilityStartTimeStr = match;
         try {
             originalIsoDateStr = getAttributeValue(match);
@@ -45,7 +45,7 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
             replacement: adjustedAvailabilityStartTimeStr
         };
     },
-    SegmentTemplate: function processSegmentTemplate(state, match) {
+    'SegmentTemplate': function processSegmentTemplate(state, match) {
         // New timeline coming up. Reset parameters, so default values are used if they are not explicitly set.
         return {
             updatedState: {
@@ -55,7 +55,7 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
             replacement: match
         };
     },
-    timescale: function processTimeScale(state, match) {
+    'timescale': function processTimeScale(state, match) {
         var timescale;
         try {
             timescale = parseInt(getAttributeValue(match), 10);
@@ -69,7 +69,7 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
             replacement: match
         };
     },
-    presentationTimeOffset: function processPresentationTimeOffset(state, match) {
+    'presentationTimeOffset': function processPresentationTimeOffset(state, match) {
         var presentationTimeOffset;
         try {
             presentationTimeOffset = parseInt(getAttributeValue(match), 10);
@@ -83,7 +83,7 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
             replacement: 'presentationTimeOffset="0"'
         };
     },
-    t: function t(state, match) {
+    't': function t(state, match) {
         var adjustedStartOffsetStr = match;
         try {
             var originalScaledStartOffsetStr = getAttributeValue(match) || 0,
