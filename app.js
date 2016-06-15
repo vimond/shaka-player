@@ -174,6 +174,10 @@ app.init = function() {
       playerControls.onSeekRangeChanged);
   app.player_.addEventListener('trackschanged', app.displayMetadata_);
 
+  app.player_.configure({
+    disableCacheBustingEvenThoughItMayAffectBandwidthEstimation: true
+  });
+  
   app.estimator_ = new shaka.util.EWMABandwidthEstimator();
   playerControls.setPlayer(app.player_);
 
@@ -721,7 +725,13 @@ app.loadStream = function() {
   window.localStorage.setItem('shakaManifestUrl', document.getElementById('manifestUrlInput').value);
 };
 
-
+/**
+ * Unloads stream.
+ */
+app.unloadStream = function() {
+  app.player_.unload();
+};
+  
 /**
  * Loads an http stream.
  */
@@ -768,6 +778,10 @@ app.loadDashStream = function() {
       app.estimator_ = new shaka.util.EWMABandwidthEstimator();
     }
 
+    extendedConfig = extendedConfig || {};
+    extendedConfig.manifestModifier = extendedConfig.manifestModifier || {};
+    extendedConfig.manifestModifier.bigIntegersFixPolicy = 'default';
+    
     var estimator = /** @type {!shaka.util.IBandwidthEstimator} */(
         app.estimator_);
     var abrManager = new shaka.media.SimpleAbrManager();
