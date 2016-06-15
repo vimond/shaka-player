@@ -87,11 +87,11 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
         var adjustedStartOffsetStr = match;
         try {
             var originalScaledStartOffsetStr = getAttributeValue(match) || 0,
-                originalScaledOffset = shaka.vimond.Integer.create(originalScaledStartOffsetStr || 0),
+                originalScaledOffset = shaka.vimond.Integer.from(originalScaledStartOffsetStr || 0),
                 originalScaledNetOffset = originalScaledOffset.subtract(state.currentPresentationTimeOffset || 0), // The scaled time from availabilityst
                 startTimeDifferenceSeconds = state.originalAvailabilityStartTimeSeconds - state.adjustedAvailabilityStartTimeSeconds,
                 adjustedScaledStartOffset = originalScaledNetOffset.add(startTimeDifferenceSeconds * state.currentTimescale).toJSNumber(),
-                timestampOffset = state.adjustedAvailabilityStartTimeSeconds + shaka.vimond.Integer.create(state.currentPresentationTimeOffset).divide(state.currentTimescale).toJSNumber() - state.originalAvailabilityStartTimeSeconds;
+                timestampOffset = state.adjustedAvailabilityStartTimeSeconds + shaka.vimond.Integer.from(state.currentPresentationTimeOffset).divide(state.currentTimescale).toJSNumber() - state.originalAvailabilityStartTimeSeconds;
 
             /*
             window.presentationTimeOffset = shaka.vimond.Integer.create(state.currentPresentationTimeOffset).divide(state.currentTimescale).toJSNumber();

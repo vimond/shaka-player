@@ -15,13 +15,25 @@ var BASE = 1e7,
     MAX_INT_ARR = smallToArray(MAX_INT),
     LOG_MAX_INT = Math.log(MAX_INT);
 
-shaka.vimond.Integer.create = function Integer(v, radix) {
+/**
+ * 
+ * @param v
+ * @param {number=} [radix]
+ * @returns {*}
+ */
+shaka.vimond.Integer.from = function (v, radix) {
     if (typeof v === "undefined") return shaka.vimond.Integer[0];
     if (typeof radix !== "undefined") return +radix === 10 ? parseValue(v) : parseBase(v, radix);
     return parseValue(v);
 };
 
-shaka.vimond.BigInteger = function BigInteger(value, sign) {
+/**
+ * 
+ * @param value
+ * @param sign
+ * @constructor
+ */
+shaka.vimond.BigInteger = function(value, sign) {
     this.value = value;
     this.sign = sign;
     this.isSmall = false;
@@ -29,7 +41,12 @@ shaka.vimond.BigInteger = function BigInteger(value, sign) {
 
 shaka.vimond.BigInteger.prototype = Object.create(shaka.vimond.Integer.prototype);
 
-shaka.vimond.SmallInteger = function SmallInteger(value) {
+/**
+ * 
+ * @param value
+ * @constructor
+ */
+shaka.vimond.SmallInteger = function (value) {
     this.value = value;
     this.sign = value < 0;
     this.isSmall = true;
@@ -64,7 +81,7 @@ function arrayToSmall(arr) { // If BASE changes this function may need to change
 
 function trim(v) {
     var i = v.length;
-    while (v[--i] === 0);
+    while (v[--i] === 0) {};
     v.length = i + 1;
 }
 
@@ -523,7 +540,7 @@ function divModAny(self, v) {
         if (n.isSmall) {
             return [new shaka.vimond.SmallInteger(truncate(a / b)), new shaka.vimond.SmallInteger(a % b)];
         }
-        return [Integer[0], self];
+        return [shaka.vimond.Integer[0], self];
     }
     if (n.isSmall) {
         if (b === 1) return [self, shaka.vimond.Integer[0]];
@@ -543,8 +560,8 @@ function divModAny(self, v) {
         b = smallToArray(abs);
     }
     var comparison = compareAbs(a, b);
-    if (comparison === -1) return [Integer[0], self];
-    if (comparison === 0) return [Integer[self.sign === n.sign ? 1 : -1], shaka.vimond.Integer[0]];
+    if (comparison === -1) return [shaka.vimond.Integer[0], self];
+    if (comparison === 0) return [shaka.vimond.Integer[self.sign === n.sign ? 1 : -1], shaka.vimond.Integer[0]];
 
     // divMod1 is faster on smaller input sizes
     if (a.length + b.length <= 200)
@@ -782,7 +799,7 @@ shaka.vimond.BigInteger.prototype.isDivisibleBy = function (v) {
     if (value === 0) return false;
     if (value === 1) return true;
     if (value === 2) return this.isEven();
-    return this.mod(n).equals(Integer[0]);
+    return this.mod(n).equals(shaka.vimond.Integer[0]);
 };
 shaka.vimond.SmallInteger.prototype.isDivisibleBy = shaka.vimond.BigInteger.prototype.isDivisibleBy;
 
@@ -805,8 +822,8 @@ shaka.vimond.BigInteger.prototype.isPrime = function () {
         d, t, i, x;
     while (b.isEven()) b = b.divide(2);
     for (i = 0; i < a.length; i++) {
-        x = bigInt(a[i]).modPow(b, n);
-        if (x.equals(Integer[1]) || x.equals(nPrev)) continue;
+        x = shaka.vimond.Integer.from(a[i]).modPow(b, n);
+        if (x.equals(shaka.vimond.Integer[1]) || x.equals(nPrev)) continue;
         for (t = true, d = b; t && d.lesser(nPrev) ; d = d.multiply(2)) {
             x = x.square().mod(n);
             if (x.equals(nPrev)) t = false;
@@ -824,7 +841,7 @@ shaka.vimond.BigInteger.prototype.isProbablePrime = function (iterations) {
     var t = iterations === undefined ? 5 : iterations;
     // use the Fermat primality test
     for (var i = 0; i < t; i++) {
-        var a = bigInt.randBetween(2, n.minus(2));
+        var a = shaka.vimond.Integer.randBetween(2, n.minus(2));
         if (!a.modPow(n.prev(), n).isUnit()) return false; // definitely composite
     }
     return true; // large chance of being prime
@@ -927,9 +944,9 @@ function bitwise(x, y, fn) {
     }
     var result = [];
     for (var i = 0; i < xBits.length; i++) result.push(fn(xBits[i], yBits[i]));
-    var sum = bigInt(result.pop()).negate().times(bigInt(2).pow(result.length));
+    var sum = shaka.vimond.Integer.from(result.pop()).negate().times(shaka.vimond.Integer.from(2).pow(result.length));
     while (result.length) {
-        sum = sum.add(bigInt(result.pop()).times(bigInt(2).pow(result.length)));
+        sum = sum.add(shaka.vimond.Integer.from(result.pop()).times(shaka.vimond.Integer.from(2).pow(result.length)));
     }
     return sum;
 }
@@ -1062,7 +1079,7 @@ function stringify(digit) {
     return "<" + v + ">";
 }
 function toBase(n, base) {
-    base = bigInt(base);
+    base = shaka.vimond.Integer.from(base);
     if (base.isZero()) {
         if (n.isZero()) return "0";
         throw new Error("Cannot convert nonzero numbers to base 0.");
@@ -1097,9 +1114,7 @@ function toBase(n, base) {
     return minusSign + out.reverse().join("");
 }
 
-shaka.vimond.BigInteger.prototype.toString = function (radix) {
-    if (radix === undefined) radix = 10;
-    if (radix !== 10) return toBase(this, radix);
+shaka.vimond.BigInteger.prototype.toString = function () {
     var v = this.value, l = v.length, str = String(v[--l]), zeros = "0000000", digit;
     while (--l >= 0) {
         digit = String(v[l]);
@@ -1108,9 +1123,8 @@ shaka.vimond.BigInteger.prototype.toString = function (radix) {
     var sign = this.sign ? "-" : "";
     return sign + str;
 };
-shaka.vimond.SmallInteger.prototype.toString = function (radix) {
-    if (radix === undefined) radix = 10;
-    if (radix != 10) return toBase(this, radix);
+
+shaka.vimond.SmallInteger.prototype.toString = function () {
     return String(this.value);
 };
 
