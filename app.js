@@ -116,7 +116,7 @@ app.extendedConfigurationManager = {
     var configuration, formElement = document.getElementById('extendedConfiguration');
     window.localStorage.setItem('extendedConfiguration', formElement.value);
     try {
-      configuration = JSON.parse(formElement.value.replace(/\/\*(.|[\r\n])*\*\//gm, ''));
+      configuration = formElement.value.length > 0 && JSON.parse(formElement.value.replace(/\/\*(.|[\r\n])*\*\//gm, ''));
     } catch (e) {
       console.error('Invalid JSON configuration string specified', e);
     }
