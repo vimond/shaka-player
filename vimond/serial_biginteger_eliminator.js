@@ -9,11 +9,11 @@ goog.require('shaka.log');
 goog.require('shaka.vimond.Integer');
 
 shaka.vimond.dash.SerialBigIntegerEliminator.MANIFEST_ELIGIBILITY_REGEX = 
-    /availabilityStartTime="([A-Z]|[0-9]|-|\+|:|\.)+"((.|\n)*) t="[0-9]{16,}"/;
+    /(type="static"|availabilityStartTime="([A-Z]|[0-9]|-|\+|:|\.)+"((.|\n)*) t="[0-9]{16,}")/;
 
 shaka.vimond.dash.SerialBigIntegerEliminator.MANIFEST_REPLACEMENT_REGEX =
-    /(availabilityStartTime)="(?:.*?)"|<(SegmentTemplate) |(presentationTimeOffset)="[0-9]*?"|(timescale)="[0-9]*?"| (t)="[0-9]*?"/g;
-//Capture groups:  1                           2                       3                           4                  5
+    /(type)="static"|(availabilityStartTime)="(?:.*?)"|<(SegmentTemplate) |(presentationTimeOffset)="[0-9]*?"|(timescale)="[0-9]*?"| (t)="[0-9]*?"/g;
+//CG:  1                        2                               3                      4                           5                  6
 
 function getAttributeValue(str) {
     "use strict";
@@ -24,6 +24,19 @@ function getAttributeValue(str) {
 }
 
 shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
+    'type': function(state, match) {
+        "use strict";
+        var startTimeSeconds = 100; // More than 100 seconds difference between different timelines should not happen.
+        
+        return {
+            updatedState: {
+                originalAvailabilityStartTimeSeconds: startTimeSeconds,
+                adjustedAvailabilityStartTimeSeconds: startTimeSeconds
+            },
+            replacement: match
+        };
+        
+    },
     'availabilityStartTime': function processAvailabilityStartTime(state, match) {
         var originalIsoDateStr, originalAvailabilityStartTimeSeconds, adjustedAvailabilityStartTimeSeconds, adjustedAvailabilityStartTimeStr = match;
         try {
@@ -148,8 +161,8 @@ shaka.vimond.dash.SerialBigIntegerEliminator.eliminate = function(manifestString
         currentPresentationTimeOffset: 0
     };
 
-    function replace(match, p1, p2, p3, p4, p5) {
-        var matchKeyword = p1 || p2 || p3 || p4 || p5;
+    function replace(match, p1, p2, p3, p4, p5, p6) {
+        var matchKeyword = p1 || p2 || p3 || p4 || p5 || p6;
         
         if (matchKeyword) {
             try {
