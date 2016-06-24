@@ -48,7 +48,8 @@ describe('SerialBigIntegerEliminator', function() {
     describe('eliminate', function () {
         var adjusted;
         beforeAll(function() {
-            adjusted = shaka.vimond.dash.SerialBigIntegerEliminator.eliminate(manifest);
+            var result = shaka.vimond.dash.SerialBigIntegerEliminator.eliminate(manifest);
+            adjusted = result.manifestString;
             
         });
         it('keeps XML validity.', function () {
