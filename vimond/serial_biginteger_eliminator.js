@@ -24,7 +24,7 @@ function getAttributeValue(str) {
 }
 
 shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
-    'type': function(state, match) {
+    'type': function(state, match) { // type="static" is implied for this handler, even if not stated in the key.
         "use strict";
         var startTimeSeconds = 100; // More than 100 seconds difference between different timelines should not happen.
         
