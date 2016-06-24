@@ -9,10 +9,24 @@ goog.require('shaka.dash.MpdRequest');
 goog.require('shaka.dash.mpd');
 goog.require('shaka.vimond.dash.ManifestTextPreprocessor');
 goog.require('shaka.vimond.dash.SerialBigIntegerEliminator');
+goog.require('shaka.vimond.dash.SerialBigIntegerEliminator.WorkaroundState');
 goog.require('shaka.player.Defaults');
 goog.require('shaka.util.AjaxRequest');
 goog.require('shaka.util.FailoverUri');
 goog.require('shaka.util.FailoverUri');
+
+/**
+ * @param {string} manifestString
+ * @param {shaka.vimond.dash.SerialBigIntegerEliminator.WorkaroundState=} state
+ * @struct
+ * @constructor
+ */
+shaka.vimond.dash.ProcessResult = function(manifestString, state) {
+    "use strict";
+    this.manifestString = manifestString;
+    /** @public {?shaka.vimond.dash.SerialBigIntegerEliminator.WorkaroundState|undefined} */
+    this.state = state;
+};
 
 /**
  * Creates an MpdRequest where the manifest can be modified.
@@ -20,13 +34,13 @@ goog.require('shaka.util.FailoverUri');
  * @param {!shaka.util.FailoverUri} url The URL.
  * @param {number=} opt_requestTimeout The timeout for a MpdRequest in seconds.
  * @param {shaka.vimond.dash.ManifestModificationSetup=} opt_modificationSetup
- *
+ * @param {shaka.vimond.dash.SerialBigIntegerEliminator.WorkaroundState=} opt_previousBigIntegerWorkaroundState
  * @constructor
  * @struct
  * @extends {shaka.dash.MpdRequest}
  * @exportDoc
  */
-shaka.vimond.dash.PreprocessableMpdRequest = function(url, opt_requestTimeout, opt_modificationSetup) {
+shaka.vimond.dash.PreprocessableMpdRequest = function(url, opt_requestTimeout, opt_modificationSetup, opt_previousBigIntegerWorkaroundState) {
     shaka.dash.MpdRequest.call(this, url, opt_requestTimeout);
     /** @private {shaka.vimond.dash.ManifestTextPreprocessor} */
     this.manifestTextPreprocessor_ = new shaka.vimond.dash.ManifestTextPreprocessor(opt_modificationSetup);
@@ -37,7 +51,10 @@ shaka.vimond.dash.PreprocessableMpdRequest = function(url, opt_requestTimeout, o
         this.presentationTimeOffsetFixMethod_ = this.modificationSetup_.presentationTimeOffsetFixPolicy == 'highest' ? this.findHighestOffset_ :
             (this.modificationSetup_.presentationTimeOffsetFixPolicy == 'lowest' ? this.findLowestOffset_ : this.findFirstOffsetWithVideo_);  
     }
-
+    /** @private {?shaka.vimond.dash.SerialBigIntegerEliminator.WorkaroundState|undefined} */
+    this.previousBigIntegerWorkaroundState_ = opt_previousBigIntegerWorkaroundState;
+    /** @public {?shaka.vimond.dash.SerialBigIntegerEliminator.WorkaroundState|undefined} */
+    this.updatedBigIntegerWorkaroundState = null;
 };
 
 goog.inherits(shaka.vimond.dash.PreprocessableMpdRequest, shaka.dash.MpdRequest);
@@ -46,35 +63,36 @@ goog.inherits(shaka.vimond.dash.PreprocessableMpdRequest, shaka.dash.MpdRequest)
 shaka.vimond.dash.PreprocessableMpdRequest.prototype.send = function() {
     var url = this.url_;
     return url.fetch(this.parameters_).then(function(data) {
-            var mpd = shaka.dash.mpd.parseMpd(this.fixBigIntegers_(this.manifestTextPreprocessor_.process(data)), url.urls, [url.currentUrl]);
-            if (mpd) {
-                return Promise.resolve(this.applyPresentationTimeOffsetFix_(mpd));
-            }
+        var processedResult = this.fixBigIntegers_(this.manifestTextPreprocessor_.process(data));
+        if (processedResult.state) {
+            shaka.log.info('Big int processed state.', processedResult.state);
+        }
+        this.updatedBigIntegerWorkaroundState = processedResult.state;
+        var mpd = shaka.dash.mpd.parseMpd(processedResult.manifestString, url.urls, [url.currentUrl]);
+        if (mpd) {
+            return Promise.resolve(this.applyPresentationTimeOffsetFix_(mpd));
+        }
 
-            var error = new Error('MPD parse failure.');
-            error.type = 'dash';
-            return Promise.reject(error);
-        }.bind(this));
+        var error = new Error('MPD parse failure.');
+        error.type = 'dash';
+        return Promise.reject(error);
+    }.bind(this));
 };
-
-
-
 
 /**
  * Applies workarounds for big numbers in offsets and time codes
  * @param {string} manifest
- * @returns {string}
+ * @returns {shaka.vimond.dash.ProcessResult}
  */
 shaka.vimond.dash.PreprocessableMpdRequest.prototype.fixBigIntegers_ = function(manifest) {
     "use strict";
     if (this.modificationSetup_ && this.modificationSetup_.bigIntegersFixPolicy) {
-        return shaka.vimond.dash.SerialBigIntegerEliminator.eliminate(manifest);
+        shaka.log.info('Previous state', this.previousBigIntegerWorkaroundState_);
+        return shaka.vimond.dash.SerialBigIntegerEliminator.eliminate(manifest, this.previousBigIntegerWorkaroundState_);
     } else {
-        return manifest;
+        return new shaka.vimond.dash.ProcessResult(manifest);
     }
 };
-
-
 
 /**
  * If a presentationTimeOffset fix policy is specified, applies such a fix if needed, by mutating the Mpd instance.

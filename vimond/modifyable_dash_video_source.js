@@ -11,6 +11,7 @@ goog.require('shaka.dash.MpdProcessor');
 goog.require('shaka.vimond.dash.PreprocessableMpdRequest');
 goog.require('shaka.dash.mpd');
 goog.require('shaka.vimond.dash.ManifestModificationSetup');
+goog.require('shaka.vimond.dash.SerialBigIntegerEliminator.WorkaroundState');
 
 /**
  * Creates a DashVideoSource where the manifest can be modified.
@@ -32,6 +33,8 @@ shaka.vimond.player.ModifyableDashVideoSource = function(mpdUrl, interpretConten
     this.opt_manifestModificationSetup_ = opt_manifestModificationSetup || null;
     /** @private {?function(number)} */
     this.availabilityStartTimeReady_ = availabilityStartTimeReady;
+    /** @private {?shaka.vimond.dash.SerialBigIntegerEliminator.WorkaroundState|undefined} */
+    this.previousBigIntegerState_ = null;
 };
 
 goog.inherits(shaka.vimond.player.ModifyableDashVideoSource, shaka.player.DashVideoSource);
@@ -43,10 +46,11 @@ if (shaka.features.Dash) {
 shaka.vimond.player.ModifyableDashVideoSource.prototype.load = function() {
     var url = new shaka.util.FailoverUri(this.networkCallback_, [new goog.Uri(this.mpdUrl_)]);
     var mpdRequest =
-        new shaka.vimond.dash.PreprocessableMpdRequest(url, this.mpdRequestTimeout, this.opt_manifestModificationSetup_);
+        new shaka.vimond.dash.PreprocessableMpdRequest(url, this.mpdRequestTimeout, this.opt_manifestModificationSetup_, this.previousBigIntegerState_);
     return mpdRequest.send().then(shaka.util.TypedBind(this,
             /** @param {!shaka.dash.mpd.Mpd} mpd */
             function(mpd) {
+                this.previousBigIntegerState_ = mpdRequest.updatedBigIntegerWorkaroundState;
                 for (var i = 0; i < this.captionsUrl_.length; i++) {
                     mpd.addExternalCaptions(this.captionsUrl_[i],
                         this.captionsLang_[i], this.captionsMime_[i]);
@@ -81,10 +85,11 @@ shaka.vimond.player.ModifyableDashVideoSource.prototype.load = function() {
 /** @override */
 shaka.vimond.player.ModifyableDashVideoSource.prototype.onUpdateManifest = function(url) {
     var mpdRequest =
-        new shaka.vimond.dash.PreprocessableMpdRequest(url, this.mpdRequestTimeout, this.opt_manifestModificationSetup_);
+        new shaka.vimond.dash.PreprocessableMpdRequest(url, this.mpdRequestTimeout, this.opt_manifestModificationSetup_, this.previousBigIntegerState_);
     return mpdRequest.send().then(shaka.util.TypedBind(this,
             /** @param {!shaka.dash.mpd.Mpd} mpd */
             function(mpd) {
+                this.previousBigIntegerState_ = mpdRequest.updatedBigIntegerWorkaroundState;
                 var mpdProcessor =
                     new shaka.dash.MpdProcessor(this.interpretContentProtection_);
                 var newManifestInfo = mpdProcessor.process(mpd, this.networkCallback_);

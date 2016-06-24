@@ -5,15 +5,27 @@
  */
 
 goog.provide('shaka.vimond.dash.SerialBigIntegerEliminator');
+goog.provide('shaka.vimond.dash.SerialBigIntegerEliminator.WorkaroundState');
 goog.require('shaka.log');
 goog.require('shaka.vimond.Integer');
 
 shaka.vimond.dash.SerialBigIntegerEliminator.MANIFEST_ELIGIBILITY_REGEX = 
-    /(type="static"|availabilityStartTime="([A-Z]|[0-9]|-|\+|:|\.)+"((.|\n)*) t="[0-9]{16,}")/;
+    /((type="static"|availabilityStartTime="([A-Z]|[0-9]|-|\+|:|\.)+")((.|\n)*) t="[0-9]{16,}")/;
 
 shaka.vimond.dash.SerialBigIntegerEliminator.MANIFEST_REPLACEMENT_REGEX =
     /(type)="static"|(availabilityStartTime)="(?:.*?)"|<(SegmentTemplate) |(presentationTimeOffset)="[0-9]*?"|(timescale)="[0-9]*?"| (t)="[0-9]*?"/g;
 //CG:  1                        2                               3                      4                           5                  6
+
+/**
+ * 
+ * @struct
+ * @constructor
+ */
+shaka.vimond.dash.SerialBigIntegerEliminator.WorkaroundState = function() {
+    "use strict";
+    this.originalAvailabilityStartTimeSeconds = null;
+    this.adjustedAvailabilityStartTimeSeconds = null;
+};
 
 function getAttributeValue(str) {
     "use strict";
@@ -26,12 +38,18 @@ function getAttributeValue(str) {
 shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
     'type': function(state, match) { // type="static" is implied for this handler, even if not stated in the key.
         "use strict";
-        var startTimeSeconds = 100; // More than 100 seconds difference between different timelines should not happen.
-        
+        var originalAvailabilityStartTimeSeconds = 100; // More than 100 seconds difference between different timelines should not happen.
+        var adjustedAvailabilityStartTimeSeconds = originalAvailabilityStartTimeSeconds;
+        if (state.previousState && state.previousState.originalAvailabilityStartTimeSeconds) {
+            originalAvailabilityStartTimeSeconds = state.previousState.originalAvailabilityStartTimeSeconds;
+            adjustedAvailabilityStartTimeSeconds = state.previousState.adjustedAvailabilityStartTimeSeconds;
+            shaka.log.info('Switching to dynamic to static manifest. Applying big int workaround start offsets kept from live state.', state.previousState);
+        }
         return {
             updatedState: {
-                originalAvailabilityStartTimeSeconds: startTimeSeconds,
-                adjustedAvailabilityStartTimeSeconds: startTimeSeconds
+                isStatic: true,
+                originalAvailabilityStartTimeSeconds: originalAvailabilityStartTimeSeconds,
+                adjustedAvailabilityStartTimeSeconds: adjustedAvailabilityStartTimeSeconds
             },
             replacement: match
         };
@@ -46,6 +64,7 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
             shaka.log.warning('Parse date failed.', e);    
         }
         if (originalAvailabilityStartTimeSeconds) {
+            // Setting midnight yesterday as start time, should ensure always positive numbers for the longest practical DVR window lengths.
             adjustedAvailabilityStartTimeSeconds = (Math.floor(originalAvailabilityStartTimeSeconds / 86400) - 1) * 86400;
             adjustedAvailabilityStartTimeStr = 'availabilityStartTime="' + new Date(adjustedAvailabilityStartTimeSeconds * 1000).toISOString() +
                 '" _availabilityStartTime="' + originalIsoDateStr + '"';
@@ -150,16 +169,19 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
 };
 
 /**
- * 
+ *
  * @param {string } manifestString
+ * @param {shaka.vimond.dash.SerialBigIntegerEliminator.WorkaroundState=} previousState
+ * @returns {shaka.vimond.dash.ProcessResult}
  */
-shaka.vimond.dash.SerialBigIntegerEliminator.eliminate = function(manifestString) {
+shaka.vimond.dash.SerialBigIntegerEliminator.eliminate = function(manifestString, previousState) {
     "use strict";
     var state = {
         originalAvailabilityStartTimeSeconds: null,
         adjustedAvailabilityStartTimeSeconds: null,
         currentTimescale: 1,
-        currentPresentationTimeOffset: 0
+        currentPresentationTimeOffset: 0,
+        previousState: previousState
     };
 
     function replace(match, p1, p2, p3, p4, p5, p6) {
@@ -184,8 +206,12 @@ shaka.vimond.dash.SerialBigIntegerEliminator.eliminate = function(manifestString
     
     var isEligible = shaka.vimond.dash.SerialBigIntegerEliminator.MANIFEST_ELIGIBILITY_REGEX.test(manifestString);
     if (isEligible) {
-        return manifestString.replace(shaka.vimond.dash.SerialBigIntegerEliminator.MANIFEST_REPLACEMENT_REGEX, replace);
+        var replaced = manifestString.replace(shaka.vimond.dash.SerialBigIntegerEliminator.MANIFEST_REPLACEMENT_REGEX, replace),
+            workaroundState = new shaka.vimond.dash.SerialBigIntegerEliminator.WorkaroundState();
+        workaroundState.originalAvailabilityStartTimeSeconds = state.originalAvailabilityStartTimeSeconds;
+        workaroundState.adjustedAvailabilityStartTimeSeconds = state.adjustedAvailabilityStartTimeSeconds;
+        return new shaka.vimond.dash.ProcessResult(replaced, workaroundState);
     } else {
-        return manifestString;
+        return new shaka.vimond.dash.ProcessResult(manifestString);
     }
 };
