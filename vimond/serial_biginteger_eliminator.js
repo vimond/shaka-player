@@ -155,7 +155,7 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
             */
             
             adjustedStartOffsetStr = ' t="' + adjustedScaledStartOffset + '" _t="' + originalScaledStartOffsetStr + '" _timestampOffset="' + timestampOffset.toString() + '"';
-            shaka.log.info('Adjusting start offset to JS compatible integer, and keeping the old one.', adjustedStartOffsetStr);
+            shaka.log.info('Adjusting start offset to JS compatible integer, and keeping the old big one.', adjustedStartOffsetStr);
             shaka.log.info('Original/adjusted availability start time', new Date(state.originalAvailabilityStartTimeSeconds*1000), new Date(state.adjustedAvailabilityStartTimeSeconds*1000));
         } catch(e) {
             shaka.log.warning('Start offset adjustment failed.', e);
