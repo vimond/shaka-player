@@ -60,10 +60,10 @@ describe('DrmEngine', function() {
       .addPeriod(0)
         .addStreamSet('video')
           .addDrmInfo('drm.abc')
-          .addStream(0).mime('video/foo', 'vbar')
+          .addStream(0).mime('video/foo', 'vbar').encrypted(true)
         .addStreamSet('audio')
           .addDrmInfo('drm.def')
-          .addStream(1).mime('audio/foo', 'abar')
+          .addStream(1).mime('audio/foo', 'abar').encrypted(true)
       .build();
 
     // Reset spies.
@@ -143,6 +143,18 @@ describe('DrmEngine', function() {
       }).catch(fail).then(done);
     });
 
+    it('detects content type capabilities of key system', function(done) {
+      requestMediaKeySystemAccessSpy.and.callFake(
+          fakeRequestMediaKeySystemAccess.bind(null, ['drm.abc']));
+
+      drmEngine.init(manifest, /* offline */ false).then(function() {
+        expect(drmEngine.initialized()).toBe(true);
+        expect(drmEngine.getSupportedTypes()).toEqual([
+          'audio/webm', 'video/mp4; codecs="fake"'
+        ]);
+      }).catch(fail).then(done);
+    });
+
     it('tries the second key system if the first fails', function(done) {
       // Accept drm.def, but not drm.abc.
       requestMediaKeySystemAccessSpy.and.callFake(
@@ -177,7 +189,7 @@ describe('DrmEngine', function() {
             .toHaveBeenCalledWith('drm.def', jasmine.any(Object));
         shaka.test.Util.expectToEqualError(error, new shaka.util.Error(
             shaka.util.Error.Category.DRM,
-            shaka.util.Error.Code.REQUESTED_KEY_SYSTEMS_UNAVAILABLE));
+            shaka.util.Error.Code.REQUESTED_KEY_SYSTEM_CONFIG_UNAVAILABLE));
       }).then(done);
     });
 
@@ -225,7 +237,7 @@ describe('DrmEngine', function() {
         expect(requestMediaKeySystemAccessSpy.calls.count()).toBe(2);
         expect(requestMediaKeySystemAccessSpy)
             .toHaveBeenCalledWith('drm.abc', [jasmine.objectContaining({
-              audioCapabilities: undefined,
+              // audioCapabilities not present.
               videoCapabilities: [jasmine.objectContaining({
                 contentType: 'video/foo; codecs="vbar"'
               })],
@@ -238,7 +250,7 @@ describe('DrmEngine', function() {
               audioCapabilities: [jasmine.objectContaining({
                 contentType: 'audio/foo; codecs="abar"'
               })],
-              videoCapabilities: undefined,
+              // videoCapabilities not present.
               distinctiveIdentifier: 'optional',
               persistentState: 'optional',
               sessionTypes: ['temporary']
@@ -568,7 +580,7 @@ describe('DrmEngine', function() {
         expect(logErrorSpy).toHaveBeenCalled();
         shaka.test.Util.expectToEqualError(error, new shaka.util.Error(
             shaka.util.Error.Category.DRM,
-            shaka.util.Error.Code.REQUESTED_KEY_SYSTEMS_UNAVAILABLE));
+            shaka.util.Error.Code.NO_LICENSE_SERVER_GIVEN));
       }).then(done);
     });
 
@@ -1269,6 +1281,38 @@ describe('DrmEngine', function() {
     });
   });  // describe('destroy')
 
+  describe('getDrmInfo', function() {
+    it('includes correct info', function(done) {
+      requestMediaKeySystemAccessSpy.and.callFake(
+          fakeRequestMediaKeySystemAccess.bind(null, ['drm.abc']));
+      // Both audio and video with the same key system now:
+      manifest.periods[0].streamSets[1].drmInfos[0].keySystem = 'drm.abc';
+
+      config.advanced['drm.abc'] = {
+        audioRobustness: 'good',
+        videoRobustness: 'really_really_ridiculously_good',
+        distinctiveIdentifierRequired: true,
+        persistentStateRequired: true
+      };
+      drmEngine.configure(config);
+
+      drmEngine.init(manifest, /* offline */ false).then(function() {
+        expect(drmEngine.initialized()).toBe(true);
+        var drmInfo = drmEngine.getDrmInfo();
+        expect(drmInfo).toEqual({
+          keySystem: 'drm.abc',
+          licenseServerUri: 'http://abc.drm/license',
+          distinctiveIdentifierRequired: true,
+          persistentStateRequired: true,
+          audioRobustness: 'good',
+          videoRobustness: 'really_really_ridiculously_good',
+          serverCertificate: undefined,
+          initData: []
+        });
+      }).catch(fail).then(done);
+    });
+  });  // describe('getDrmInfo')
+
   function initAndAttach() {
     return drmEngine.init(manifest, /* offline */ false).then(function() {
       return drmEngine.attach(mockVideo);
@@ -1286,9 +1330,15 @@ describe('DrmEngine', function() {
   function createMockMediaKeySystemAccess() {
     var mksa = {
       keySystem: '',
-      getConfiguration: function() {},
+      getConfiguration: jasmine.createSpy('getConfiguration'),
       createMediaKeys: jasmine.createSpy('createMediaKeys')
     };
+    mksa.getConfiguration.and.callFake(function() {
+      return {
+        audioCapabilities: [{contentType: 'audio/webm'}],
+        videoCapabilities: [{contentType: 'video/mp4; codecs="fake"'}]
+      };
+    });
     mksa.createMediaKeys.and.callFake(function() {
       return Promise.resolve(mockMediaKeys);
     });
@@ -1305,7 +1355,7 @@ describe('DrmEngine', function() {
   function createMockSession() {
     var session = {
       expiration: NaN,
-      closed: new shaka.util.PublicPromise(),  // TODO: use in DrmEngine?
+      closed: Promise.resolve(),
       keyStatuses: {
         forEach: jasmine.createSpy('forEach')
       },

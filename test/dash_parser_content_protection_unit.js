@@ -37,7 +37,7 @@ describe('DashParser.ContentProtection', function() {
     var callback = opt_callback || function(node) { return null; };
     dashParser.configure({
       retryParameters: retry,
-      dash: { customScheme: callback }
+      dash: { clockSyncUri: '', customScheme: callback }
     });
     dashParser.start('http://example.com', netEngine, filterPeriod, fail)
         .then(function(actual) { expect(actual).toEqual(expected); })
@@ -317,7 +317,6 @@ describe('DashParser.ContentProtection', function() {
     var expected = buildExpectedManifest(
         // The order does not matter here, so use arrayContaining.
         /** @type {!Array.<!Object>} */(jasmine.arrayContaining([
-          buildDrmInfo('org.w3.clearkey'),
           buildDrmInfo('com.widevine.alpha'),
           buildDrmInfo('com.microsoft.playready'),
           buildDrmInfo('com.adobe.primetime')

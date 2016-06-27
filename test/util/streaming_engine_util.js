@@ -111,6 +111,7 @@ shaka.test.StreamingEngineUtil.createFakePresentationTimeline = function(
     setDuration: jasmine.createSpy('setDuration'),
     getSegmentAvailabilityDuration:
         jasmine.createSpy('getSegmentAvailabilityDuration'),
+    isLive: jasmine.createSpy('isLive'),
     getEarliestStart: jasmine.createSpy('getEarliestStart'),
     getSegmentAvailabilityStart:
         jasmine.createSpy('getSegmentAvailabilityStart'),
@@ -121,6 +122,10 @@ shaka.test.StreamingEngineUtil.createFakePresentationTimeline = function(
   };
 
   timeline.getDuration.and.returnValue(presentationDuration);
+
+  timeline.isLive.and.callFake(function() {
+    return presentationDuration == Number.POSITIVE_INFINITY;
+  });
 
   timeline.getEarliestStart.and.callFake(function() {
     return timeline.segmentAvailabilityStart;
@@ -137,7 +142,7 @@ shaka.test.StreamingEngineUtil.createFakePresentationTimeline = function(
   timeline.getSegmentAvailabilityDuration.and.callFake(function() {
     return presentationDuration == Number.POSITIVE_INFINITY ?
            timeline.segmentAvailabilityEnd - timeline.segmentAvailabilityStart :
-           null;
+           Number.POSITIVE_INFINITY;
   });
 
   // These methods should not be invoked.
@@ -196,10 +201,11 @@ shaka.test.StreamingEngineUtil.createManifest = function(
       return null;
 
     var d = segmentDurations[type];
+    var getUris = function() {
+      return ['' + periodNumber + '_' + type + '_' + position];
+    };
     return new shaka.media.SegmentReference(
-        position, (position - 1) * d, position * d,
-        ['' + periodNumber + '_' + type + '_' + position],
-        0, null);
+        position, (position - 1) * d, position * d, getUris, 0, null);
   }
 
   var manifest = {

@@ -27,7 +27,10 @@ shaka.test.Dash.makeDashParser = function() {
   var parser = new shaka.dash.DashParser();
   parser.configure({
     retryParameters: retry,
-    dash: { customScheme: function(node) { return null; } }
+    dash: {
+      customScheme: function(node) { return null; },
+      clockSyncUri: ''
+    }
   });
   return parser;
 };
@@ -180,7 +183,9 @@ shaka.test.Dash.makeManifestFromInit = function(
       createSegmentIndex: jasmine.any(Function),
       findSegmentPosition: jasmine.any(Function),
       initSegmentReference: new shaka.media.InitSegmentReference(
-          ['http://example.com/' + uri], startByte, endByte)
+          // TODO: Change back to checking specific URIs once jasmine is fixed.
+          // https://github.com/jasmine/jasmine/issues/1138
+          jasmine.any(Function), startByte, endByte)
     })]
   })]);
 };
@@ -216,8 +221,9 @@ shaka.test.Dash.makeReference =
   var base = 'http://example.com/';
   var startByte = opt_startByte || 0;
   var endByte = opt_endByte || null;
+  var getUris = function() { return [base + uri]; };
   return new shaka.media.SegmentReference(
-      position, start, end, [base + uri], startByte, endByte);
+      position, start, end, getUris, startByte, endByte);
 };
 
 

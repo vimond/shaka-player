@@ -34,7 +34,7 @@ describe('DashParser.Live', function() {
     parser = new shaka.dash.DashParser();
     parser.configure({
       retryParameters: retry,
-      dash: { customScheme: function(node) { return null; } }
+      dash: { clockSyncUri: '', customScheme: function(node) { return null; } }
     });
   });
 
@@ -336,7 +336,7 @@ describe('DashParser.Live', function() {
           // Since the manifest request was redirected, the segment refers to
           // the redirected base.
           var stream = manifest.periods[0].streamSets[0].streams[0];
-          var segmentUri = stream.getSegmentReference(1).uris[0];
+          var segmentUri = stream.getSegmentReference(1).getUris()[0];
           expect(segmentUri).toBe(redirectedUri + 's1.mp4');
         })
         .catch(fail)
@@ -474,7 +474,8 @@ describe('DashParser.Live', function() {
           expect(timeline.getSegmentAvailabilityStart()).toBe(110);
           // Similarly, normally the end should be 4:50; but with the delay
           // it will be 3:50 minutes.
-          expect(timeline.getSegmentAvailabilityEnd()).toBe(230);
+          expect(timeline.getSegmentAvailabilityEnd()).toBe(290);
+          expect(timeline.getSeekRangeEnd()).toBe(230);
         })
         .catch(fail)
         .then(done);
@@ -695,51 +696,35 @@ describe('DashParser.Live', function() {
     });
 
     it('interrupts UTCTiming requests', function(done) {
+      var delay = fakeNetEngine.delayNextRequest();
+      Util.delay(0.2, realTimeout).then(function() {
+        // This is the initial manifest request.
+        expect(fakeNetEngine.request.calls.count()).toBe(1);
+        fakeNetEngine.expectRequest(manifestUri, manifestRequestType);
+        fakeNetEngine.request.calls.reset();
+        // Resolve the manifest request and wait on the UTCTiming request.
+        delay.resolve();
+        delay = fakeNetEngine.delayNextRequest();
+        return Util.delay(0.2, realTimeout);
+      }).then(function() {
+        // This is the first UTCTiming request.
+        expect(fakeNetEngine.request.calls.count()).toBe(1);
+        fakeNetEngine.expectRequest(dateUri, dateRequestType);
+        fakeNetEngine.request.calls.reset();
+        // Interrupt the parser, then fail the request.
+        parser.stop();
+        delay.reject();
+        return Util.delay(0.1, realTimeout);
+      }).then(function() {
+        // Wait for another update period.
+        return delayForUpdatePeriod();
+      }).then(function() {
+        // No more updates should occur.
+        expect(fakeNetEngine.request).not.toHaveBeenCalled();
+      }).catch(fail).then(done);
+
       parser.start('dummy://foo', fakeNetEngine, newPeriod, errorCallback)
-          .then(function(manifest) {
-            expect(manifest).toBeTruthy();
-            fakeNetEngine.expectRequest(manifestUri, manifestRequestType);
-            fakeNetEngine.request.calls.reset();
-            var delay = fakeNetEngine.delayNextRequest();
-
-            return delayForUpdatePeriod().then(function() {
-              // Resolve the manifest request and wait on the UTCTiming
-              // request.
-              expect(fakeNetEngine.request.calls.count()).toBe(1);
-              fakeNetEngine.expectRequest(manifestUri, manifestRequestType);
-              fakeNetEngine.request.calls.reset();
-
-              delay.resolve();
-              delay = fakeNetEngine.delayNextRequest();
-              return Util.delay(0.2, realTimeout);
-            }).then(function() {
-              // This is the first UTCTiming request.  Reject it so it makes
-              // the second request.
-              expect(fakeNetEngine.request.calls.count()).toBe(1);
-              fakeNetEngine.expectRequest(dateUri, dateRequestType);
-              fakeNetEngine.request.calls.reset();
-
-              delay.reject();
-              delay = fakeNetEngine.delayNextRequest();
-              return Util.delay(0.2, realTimeout);
-            }).then(function() {
-              expect(fakeNetEngine.request.calls.count()).toBe(1);
-              fakeNetEngine.expectRequest(dateUri, dateRequestType);
-              fakeNetEngine.request.calls.reset();
-
-              parser.stop();
-              delay.resolve();
-              return Util.delay(0.1, realTimeout);
-            }).then(function() {
-              // Wait for another update period.
-              return delayForUpdatePeriod();
-            }).then(function() {
-              // A second update should not occur.
-              expect(fakeNetEngine.request).not.toHaveBeenCalled();
-            });
-          })
-          .catch(fail)
-          .then(done);
+          .catch(fail);
     });
   });
 

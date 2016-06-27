@@ -27,7 +27,7 @@ var shakaAssets = {};
 /** @enum {string} */
 shakaAssets.Encoder = {
   UNKNOWN: 'Unknown',
-  EDASH_PACKAGER: 'eDash packager',
+  SHAKA_PACKAGER: 'Shaka packager',
   YOUTUBE: 'YouTube',
   AXINOM: 'Axinom',
   UNIFIED_STREAMING: 'Unified Streaming',
@@ -254,7 +254,7 @@ shakaAssets.testAssets = [
     name: 'Angel One (multicodec, multilingual)',
     manifestUri: '//storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd',  // gjslint: disable=110
 
-    encoder: shakaAssets.Encoder.EDASH_PACKAGER,
+    encoder: shakaAssets.Encoder.SHAKA_PACKAGER,
     source: shakaAssets.Source.SHAKA,
     drm: [],
     features: [
@@ -267,10 +267,30 @@ shakaAssets.testAssets = [
     ]
   },
   {
+    name: 'Angel One (multicodec, multilingual, Widevine)',
+    manifestUri: '//storage.googleapis.com/shaka-demo-assets/angel-one-widevine/dash.mpd',  // gjslint: disable=110
+
+    encoder: shakaAssets.Encoder.SHAKA_PACKAGER,
+    source: shakaAssets.Source.SHAKA,
+    drm: [shakaAssets.KeySystem.WIDEVINE],
+    features: [
+      shakaAssets.Feature.MP4,
+      shakaAssets.Feature.MULTIPLE_LANGUAGES,
+      shakaAssets.Feature.SEGMENT_BASE,
+      shakaAssets.Feature.SUBTITLES,
+      shakaAssets.Feature.WEBM,
+      shakaAssets.Feature.WEBVTT
+    ],
+
+    licenseServers: {
+      'com.widevine.alpha': '//widevine-proxy.appspot.com/proxy'
+    }
+  },
+  {
     name: 'Sintel 4k (multicodec)',
     manifestUri: '//storage.googleapis.com/shaka-demo-assets/sintel/dash.mpd',  // gjslint: disable=110
 
-    encoder: shakaAssets.Encoder.EDASH_PACKAGER,
+    encoder: shakaAssets.Encoder.SHAKA_PACKAGER,
     source: shakaAssets.Source.SHAKA,
     drm: [],
     features: [
@@ -287,7 +307,7 @@ shakaAssets.testAssets = [
     name: 'Sintel 4k (multicodec, Widevine)',
     manifestUri: '//storage.googleapis.com/shaka-demo-assets/sintel-widevine/dash.mpd',  // gjslint: disable=110
 
-    encoder: shakaAssets.Encoder.EDASH_PACKAGER,
+    encoder: shakaAssets.Encoder.SHAKA_PACKAGER,
     source: shakaAssets.Source.SHAKA,
     drm: [shakaAssets.KeySystem.WIDEVINE],
     features: [
@@ -309,13 +329,50 @@ shakaAssets.testAssets = [
     name: 'Heliocentrism (multicodec, multiperiod)',
     manifestUri: '//storage.googleapis.com/shaka-demo-assets/heliocentrism/heliocentrism.mpd',  // gjslint: disable=110
 
-    encoder: shakaAssets.Encoder.EDASH_PACKAGER,
+    encoder: shakaAssets.Encoder.SHAKA_PACKAGER,
     source: shakaAssets.Source.SHAKA,
     drm: [],
     features: [
       shakaAssets.Feature.MP4,
       shakaAssets.Feature.MULTIPERIOD,
       shakaAssets.Feature.SEGMENT_BASE,
+      shakaAssets.Feature.WEBM
+    ]
+  },
+  {
+    name: '"Dig the Uke" by Stefan Kartenberg (audio only, multicodec, Widevine)',  // gjslint: disable=110
+    // From: http://dig.ccmixter.org/files/JeffSpeed68/53327
+    // Licensed under Creative Commons BY-NC 3.0.
+    // Free for non-commercial use with attribution.
+    // http://creativecommons.org/licenses/by-nc/3.0/
+    manifestUri: '//storage.googleapis.com/shaka-demo-assets/dig-the-uke/dash.mpd',  // gjslint: disable=110
+
+    encoder: shakaAssets.Encoder.SHAKA_PACKAGER,
+    source: shakaAssets.Source.SHAKA,
+    drm: [shakaAssets.KeySystem.WIDEVINE],
+    features: [
+      shakaAssets.Feature.MP4,
+      shakaAssets.Feature.SEGMENT_BASE,
+      shakaAssets.Feature.WEBM
+    ],
+
+    licenseServers: {
+      'com.widevine.alpha': '//widevine-proxy.appspot.com/proxy'
+    }
+  },
+  {
+    name: 'Tears of Steel (multicodec, TTML)',
+    manifestUri: '//storage.googleapis.com/shaka-demo-assets/tos-ttml/dash.mpd',
+    encoder: shakaAssets.Encoder.SHAKA_PACKAGER,
+    source: shakaAssets.Source.SHAKA,
+    drm: [],
+    features: [
+      shakaAssets.Feature.HIGH_DEFINITION,
+      shakaAssets.Feature.MP4,
+      shakaAssets.Feature.PSSH,
+      shakaAssets.Feature.SEGMENT_BASE,
+      shakaAssets.Feature.SUBTITLES,
+      shakaAssets.Feature.TTML,
       shakaAssets.Feature.WEBM
     ]
   },
@@ -556,9 +613,9 @@ shakaAssets.testAssets = [
     features: [
       shakaAssets.Feature.EMBEDDED_TEXT,
       shakaAssets.Feature.HIGH_DEFINITION,
+      shakaAssets.Feature.MP4,
       shakaAssets.Feature.SEGMENT_TEMPLATE_TIMELINE,
       shakaAssets.Feature.SEGMENTED_TEXT,
-      shakaAssets.Feature.MP4,
       shakaAssets.Feature.SUBTITLES,
       shakaAssets.Feature.TTML,
       shakaAssets.Feature.ULTRA_HIGH_DEFINITION
@@ -582,7 +639,7 @@ shakaAssets.testAssets = [
   },
   {
     name: 'Live sim (2s segments)',
-    manifestUri: '//vm2.dashif.org/livesim/testpic_2s/Manifest.mpd',
+    manifestUri: '//vm2.dashif.org/livesim/utc_head/testpic_2s/Manifest.mpd',
 
     encoder: shakaAssets.Encoder.UNKNOWN,
     source: shakaAssets.Source.DASH_IF,
@@ -595,7 +652,7 @@ shakaAssets.testAssets = [
   },
   {
     name: 'Live sim (6s segments)',
-    manifestUri: '//vm2.dashif.org/livesim/testpic_6s/Manifest.mpd',
+    manifestUri: '//vm2.dashif.org/livesim/utc_head/testpic_6s/Manifest.mpd',
 
     encoder: shakaAssets.Encoder.UNKNOWN,
     source: shakaAssets.Source.DASH_IF,

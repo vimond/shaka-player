@@ -100,7 +100,9 @@ shakaExtern.Stats;
  *   language: string,
  *   kind: ?string,
  *   width: ?number,
- *   height: ?number
+ *   height: ?number,
+ *
+ *   hasOutputRestrictions: boolean
  * }}
  *
  * @description
@@ -129,6 +131,12 @@ shakaExtern.Stats;
  *   (only for video tracks) The width of the track in pixels.
  * @property {?number} height
  *   (only for video tracks) The height of the track in pixels.
+ * @property {boolean} hasOutputRestrictions
+ *   True if this media track is encrypted and has output restrictions (e.g.,
+ *   resolution constraints) set by the key system. If true, the key system may
+ *   prohibit playback of this track. Applications must know beforehand if a
+ *   particular track with output restrictions is actually playable (based on
+ *   their own business rules).
  * @exportDoc
  */
 shakaExtern.Track;
@@ -183,26 +191,35 @@ shakaExtern.Restrictions;
 
 /**
  * @typedef {{
- *   manifest: Object.<string, boolean>,
- *   media: Object.<string, boolean>,
- *   drm: Object.<string, boolean>,
- *   supported: boolean
+ *   persistentState: boolean
+ * }}
+ *
+ * @property {boolean} persistentState
+ *   Whether this key system supports persistent state.
+ */
+shakaExtern.DrmSupportType;
+
+
+/**
+ * @typedef {{
+ *   manifest: !Object.<string, boolean>,
+ *   media: !Object.<string, boolean>,
+ *   drm: !Object.<string, ?shakaExtern.DrmSupportType>
  * }}
  *
  * @description
  * An object detailing browser support for various features.
  *
- * @property {Object.<string, boolean>} manifest
+ * @property {!Object.<string, boolean>} manifest
  *   A map of supported manifest types.
  *   The keys are manifest MIME types and file extensions.
- * @property {Object.<string, boolean>} media
+ * @property {!Object.<string, boolean>} media
  *   A map of supported media types.
  *   The keys are media MIME types.
- * @property {Object.<string, boolean>} drm
- *   A map of DRM support.
- *   The keys are well-known key system IDs.
- * @property {boolean} supported
- *   True if the library is usable at all.
+ * @property {!Object.<string, ?shakaExtern.DrmSupportType>} drm
+ *   A map of supported key systems.
+ *   The keys are the key system names.  The value is null if it is not
+ *   supported.  Key systems not probed will not be in this dictionary.
  *
  * @exportDoc
  */
@@ -283,13 +300,18 @@ shakaExtern.DrmConfiguration;
 
 /**
  * @typedef {{
- *   customScheme: shakaExtern.DashContentProtectionCallback
+ *   customScheme: shakaExtern.DashContentProtectionCallback,
+ *   clockSyncUri: string
  * }}
  *
  * @property {shakaExtern.DashContentProtectionCallback} customScheme
  *   If given, invoked by a DASH manifest parser to interpret custom or
  *   non-standard DRM schemes found in the manifest.  The argument is a
  *   ContentProtection node.  Return null if not recognized.
+ * @property {string} clockSyncUri
+ *   A default clock sync URI to be used with live streams which do not
+ *   contain any clock sync information.  The "Date" header from this URI
+ *   will be used to determine the current time.
  *
  * @exportDoc
  */

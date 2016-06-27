@@ -40,6 +40,9 @@ shakaDemo.controls_ = null;
  * Initialize the application.
  */
 shakaDemo.init = function() {
+  document.getElementById('errorDisplayCloseButton').addEventListener(
+      'click', shakaDemo.closeError);
+
   // Display the version number.
   document.getElementById('version').textContent = shaka.Player.version;
 
@@ -80,33 +83,42 @@ shakaDemo.init = function() {
 
   shaka.polyfill.installAll();
 
-  shaka.Player.support().then(function(support) {
-    shakaDemo.support_ = support;
+  if (!shaka.Player.isBrowserSupported()) {
+    var errorDisplayText = document.getElementById('errorDisplayText');
+    var error = 'Your browser is not supported!';
 
-    if (shakaDemo.support_.supported == false) {
-      var errorDisplay = document.getElementById('errorDisplay');
-      var error = 'Your browser is not supported!';
-
-      // IE8 and other very old browsers don't have textContent.
-      if (errorDisplay.textContent === undefined) {
-        errorDisplay.innerText = error;
-      } else {
-        errorDisplay.textContent = error;
-      }
-
-      // Disable the load button.
-      var loadButton = document.getElementById('loadButton');
-      loadButton.disabled = true;
-
-      // Make sure the error is seen.
-      errorDisplay.style.fontSize = '250%';
+    // IE8 and other very old browsers don't have textContent.
+    if (errorDisplayText.textContent === undefined) {
+      errorDisplayText.innerText = error;
     } else {
+      errorDisplayText.textContent = error;
+    }
+
+    // Disable the load button.
+    var loadButton = document.getElementById('loadButton');
+    loadButton.disabled = true;
+
+    // Hide the error message's close button.
+    var errorDisplayCloseButton =
+        document.getElementById('errorDisplayCloseButton');
+    errorDisplayCloseButton.style.display = 'none';
+
+    // Make sure the error is seen.
+    errorDisplayText.style.fontSize = '250%';
+
+    var errorDisplay = document.getElementById('errorDisplay');
+    errorDisplay.style.display = 'block';
+  } else {
+    shaka.Player.probeSupport().then(function(support) {
+      shakaDemo.support_ = support;
+
       shakaDemo.video_ =
           /** @type {!HTMLVideoElement} */(document.getElementById('video'));
       shakaDemo.player_ = new shaka.Player(shakaDemo.video_);
       shakaDemo.player_.addEventListener('error', shakaDemo.onErrorEvent_);
 
       shakaDemo.setupAssets_();
+      shakaDemo.setupOffline_();
       shakaDemo.setupConfiguration_();
       shakaDemo.setupInfo_();
 
@@ -124,8 +136,8 @@ shakaDemo.init = function() {
       if ('play' in params) {
         shakaDemo.load();
       }
-    }
-  });
+    });
+  }
 };
 
 
@@ -146,8 +158,17 @@ shakaDemo.onErrorEvent_ = function(event) {
 shakaDemo.onError_ = function(error) {
   console.error('Player error', error);
   var message = error.message || ('Error code ' + error.code);
-  var errorDisplay = document.getElementById('errorDisplay');
-  errorDisplay.textContent = message;
+  document.getElementById('errorDisplay').style.display = 'block';
+  document.getElementById('errorDisplayText').textContent = message;
+};
+
+
+/**
+ * Closes the error bar.
+ */
+shakaDemo.closeError = function() {
+  document.getElementById('errorDisplay').style.display = 'none';
+  document.getElementById('errorDisplayText').textContent = '';
 };
 
 

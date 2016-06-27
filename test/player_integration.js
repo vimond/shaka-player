@@ -58,7 +58,7 @@ describe('Player', function() {
     }
 
     loaded.then(function() {
-      return shaka.Player.support();
+      return shaka.Player.probeSupport();
     }).then(function(supportResults) {
       support = supportResults;
       done();
@@ -87,38 +87,68 @@ describe('Player', function() {
     document.body.removeChild(video);
   });
 
-  it('gives stats about current stream', function(done) {
-    // This is tested more in player_unit.js.  This is here to test the public
-    // API and to check for renaming.
-    var asset = '//storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd';
+  describe('getStats', function() {
+    it('gives stats about current stream', function(done) {
+      // This is tested more in player_unit.js.  This is here to test the public
+      // API and to check for renaming.
+      var asset =
+          '//storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd';
 
-    player.load(asset).then(function() {
-      video.play();
-      return waitForEvent(video, 'timeupdate', 10);
-    }).then(function() {
-      var stats = player.getStats();
-      var expected = {
-        width: jasmine.any(Number),
-        height: jasmine.any(Number),
-        streamBandwidth: jasmine.any(Number),
+      player.load(asset).then(function() {
+        video.play();
+        return waitForEvent(video, 'timeupdate', 10);
+      }).then(function() {
+        var stats = player.getStats();
+        var expected = {
+          width: jasmine.any(Number),
+          height: jasmine.any(Number),
+          streamBandwidth: jasmine.any(Number),
 
-        decodedFrames: jasmine.any(Number),
-        droppedFrames: jasmine.any(Number),
-        estimatedBandwidth: jasmine.any(Number),
-        playTime: jasmine.any(Number),
-        bufferingTime: jasmine.any(Number),
+          decodedFrames: jasmine.any(Number),
+          droppedFrames: jasmine.any(Number),
+          estimatedBandwidth: jasmine.any(Number),
+          playTime: jasmine.any(Number),
+          bufferingTime: jasmine.any(Number),
 
-        // We should have loaded the first Period by now, so we should have a
-        // history.
-        switchHistory: jasmine.arrayContaining([{
-          timestamp: jasmine.any(Number),
-          id: jasmine.any(Number),
-          type: 'video',
-          fromAdaptation: true
-        }])
-      };
-      expect(stats).toEqual(expected);
-    }).catch(fail).then(done);
+          // We should have loaded the first Period by now, so we should have a
+          // history.
+          switchHistory: jasmine.arrayContaining([{
+            timestamp: jasmine.any(Number),
+            id: jasmine.any(Number),
+            type: 'video',
+            fromAdaptation: true
+          }])
+        };
+        expect(stats).toEqual(expected);
+      }).catch(fail).then(done);
+    });
+  });
+
+  describe('setTextTrackVisibility', function() {
+    // Using mode='disabled' on TextTrack causes cues to go null, which leads
+    // to a crash in TextEngine.  This validates that we do not trigger this
+    // behavior when changing visibility of text.
+    it('does not cause cues to be null', function(done) {
+      var asset =
+          '//storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd';
+      var textTrack = video.textTracks[0];
+
+      player.load(asset).then(function() {
+        video.play();
+        return waitForEvent(video, 'timeupdate', 10);
+      }).then(function() {
+        // This should not be null initially.
+        expect(textTrack.cues).not.toBe(null);
+
+        player.setTextTrackVisibility(true);
+        // This should definitely not be null when visible.
+        expect(textTrack.cues).not.toBe(null);
+
+        player.setTextTrackVisibility(false);
+        // This should not transition to null when invisible.
+        expect(textTrack.cues).not.toBe(null);
+      }).catch(fail).then(done);
+    });
   });
 
   describe('plays', function() {
@@ -153,6 +183,8 @@ describe('Player', function() {
 
         var config = { abr: {}, drm: {}, manifest: { dash: {} } };
         config.abr.enabled = false;
+        config.manifest.dash.clockSyncUri =
+            '//shaka-player-demo.appspot.com/time.txt';
         if (asset.licenseServers)
           config.drm.servers = asset.licenseServers;
         if (asset.drmCallback)

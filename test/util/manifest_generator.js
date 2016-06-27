@@ -29,7 +29,7 @@ goog.provide('shaka.test.ManifestGenerator');
  * @struct
  */
 shaka.test.ManifestGenerator = function() {
-  var timeline = new shaka.media.PresentationTimeline(0);
+  var timeline = new shaka.media.PresentationTimeline(0, 0);
   timeline.setSegmentAvailabilityDuration(Number.POSITIVE_INFINITY);
   timeline.notifyMaxSegmentDuration(10);
 
@@ -37,6 +37,7 @@ shaka.test.ManifestGenerator = function() {
   this.manifest_ = {
     presentationTimeline: timeline,
     periods: [],
+    offlineSessionIds: [],
     minBufferTime: 0
   };
 
@@ -289,9 +290,11 @@ shaka.test.ManifestGenerator.prototype.addStream = function(id) {
     width: undefined,
     height: undefined,
     kind: undefined,
+    encrypted: false,
     keyId: null,
     allowedByApplication: true,
-    allowedByKeySystem: true
+    allowedByKeySystem: true,
+    hasOutputRestrictions: false
   };
   stream.createSegmentIndex.and.callFake(
       function() { return Promise.resolve(); });
@@ -359,8 +362,9 @@ shaka.test.ManifestGenerator.prototype.anyInitSegment = function() {
 shaka.test.ManifestGenerator.prototype.initSegmentReference = function(
     uris, startByte, endByte) {
   var stream = this.currentStream_();
+  var getUris = function() { return uris; };
   stream.initSegmentReference =
-      new shaka.media.InitSegmentReference(uris, startByte, endByte);
+      new shaka.media.InitSegmentReference(getUris, startByte, endByte);
   return this;
 };
 
@@ -430,6 +434,19 @@ shaka.test.ManifestGenerator.prototype.size = function(width, height) {
 shaka.test.ManifestGenerator.prototype.kind = function(kind) {
   var stream = this.currentStream_();
   stream.kind = kind;
+  return this;
+};
+
+
+/**
+ * Sets the encrypted flag of the current stream.
+ *
+ * @param {boolean} encrypted
+ * @return {!shaka.test.ManifestGenerator}
+ */
+shaka.test.ManifestGenerator.prototype.encrypted = function(encrypted) {
+  var stream = this.currentStream_();
+  stream.encrypted = encrypted;
   return this;
 };
 

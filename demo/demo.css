@@ -133,6 +133,8 @@ summary {
 
 #assetList, #customAsset div {
   margin: 0 0 1.2em 0;
+  /* Otherwise, this causes horizontal scrolling on narrow screens */
+  max-width: 80%;
 }
 
 #container {
@@ -144,14 +146,40 @@ summary {
   display: none;
 }
 
+#customAsset input {
+  /* Otherwise, this becomes a two lines tall on narrow screens */
+  height: 1.4em;
+}
+
 #errorDisplay {
   background-color: #d84a38;
-  color: white;
   margin: 0;
   padding: 0;
   line-height: 2em;
   text-align: center;
   width: 100%;
+  display: none;
+}
+
+#errorDisplayText {
+  background-color: #d84a38;
+  color: white;
+  margin-left: 2em;
+  margin-right: 2em;
+  float: center;
+}
+
+#errorDisplayCloseButton {
+  background-color: #d84a38;
+  color: white;
+  position: relative;
+  padding: 0 0;
+  top: 0em;
+  right: 0.5em;
+  float: right;
+  font-weight: bold;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 #logSection {

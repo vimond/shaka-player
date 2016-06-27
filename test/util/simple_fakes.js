@@ -93,17 +93,49 @@ shaka.test.FakeAbrManager.prototype.chooseStreams = function(
  */
 shaka.test.FakeDrmEngine = function() {
   var resolve = Promise.resolve.bind(Promise);
+  var offlineSessionIds = [];
+  var drmInfo = null;
 
-  var ret = jasmine.createSpyObj(
-      'FakeDrmEngine',
-      ['destroy', 'configure', 'init', 'attach', 'initialized', 'keySystem']);
+  var ret = jasmine.createSpyObj('FakeDrmEngine', [
+    'destroy', 'configure', 'init', 'attach', 'initialized', 'keySystem',
+    'getSupportedTypes', 'getDrmInfo', 'getSessionIds'
+  ]);
   ret.destroy.and.callFake(resolve);
   ret.init.and.callFake(resolve);
   ret.attach.and.callFake(resolve);
   ret.initialized.and.returnValue(true);
   ret.keySystem.and.returnValue('com.example.fake');
+  // See shaka.test.ManifestGenerator.protototype.createStream.
+  ret.getSupportedTypes.and.returnValue(
+      ['video/mp4; codecs="avc1.4d401f"']);
+
+  ret.setSessionIds = function(sessions) {
+    offlineSessionIds = sessions;
+  };
+  ret.setDrmInfo = function(info) { drmInfo = info; };
+  ret.getDrmInfo.and.callFake(function() { return drmInfo; });
+  ret.getSessionIds.and.callFake(function() {
+    return offlineSessionIds;
+  });
+
   return ret;
 };
+
+
+/** @type {jasmine.Spy} */
+shaka.test.FakeDrmEngine.prototype.init;
+
+
+/** @type {jasmine.Spy} */
+shaka.test.FakeDrmEngine.prototype.attach;
+
+
+/** @param {?shakaExtern.DrmInfo} info */
+shaka.test.FakeDrmEngine.prototype.setDrmInfo;
+
+
+/** @param {!Array.<string>} sessions */
+shaka.test.FakeDrmEngine.prototype.setSessionIds;
 
 
 
@@ -138,6 +170,10 @@ shaka.test.FakeStreamingEngine = function(period) {
 };
 
 
+/** @type {jasmine.Spy} */
+shaka.test.FakeStreamingEngine.prototype.init;
+
+
 
 /**
  * Creates a fake manifest parser.
@@ -157,17 +193,6 @@ shaka.test.FakeManifestParser = function(manifest) {
 };
 
 
-/**
- * Creates a factory function that creates a fake manifest parser.
- *
- * @param {shakaExtern.Manifest} manifest
- * @return {shakaExtern.ManifestParser.Factory}
- */
-shaka.test.FakeManifestParser.createFactory = function(manifest) {
-  return function() { return new shaka.test.FakeManifestParser(manifest); };
-};
-
-
 /** @override */
 shaka.test.FakeManifestParser.prototype.start = function() {
   return Promise.resolve(this.manifest_);
@@ -182,3 +207,33 @@ shaka.test.FakeManifestParser.prototype.stop = function() {
 
 /** @override */
 shaka.test.FakeManifestParser.prototype.configure = function() {};
+
+
+/**
+ * Creates a fake video element.
+ * @return {!HTMLVideoElement}
+ * @suppress {invalidCasts}
+ */
+function createMockVideo() {
+  var video = {
+    src: '',
+    textTracks: [],
+    addTextTrack: jasmine.createSpy('addTextTrack'),
+    addEventListener: jasmine.createSpy('addEventListener'),
+    removeEventListener: jasmine.createSpy('removeEventListener'),
+    removeAttribute: jasmine.createSpy('removeAttribute'),
+    load: jasmine.createSpy('load'),
+    dispatchEvent: jasmine.createSpy('dispatchEvent'),
+    on: {}  // event listeners
+  };
+  video.addTextTrack.and.callFake(function(kind, id) {
+    // TODO: mock TextTrack, if/when Player starts directly accessing it.
+    var track = {};
+    video.textTracks.push(track);
+    return track;
+  });
+  video.addEventListener.and.callFake(function(name, callback) {
+    video.on[name] = callback;
+  });
+  return /** @type {!HTMLVideoElement} */ (video);
+}

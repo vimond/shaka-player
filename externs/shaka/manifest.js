@@ -23,6 +23,7 @@
  * @typedef {{
  *   presentationTimeline: !shaka.media.PresentationTimeline,
  *   periods: !Array.<!shakaExtern.Period>,
+ *   offlineSessionIds: !Array.<string>,
  *   minBufferTime: number
  * }}
  *
@@ -66,6 +67,9 @@
  * @property {!Array.<!shakaExtern.Period>} periods
  *   <i>Required.</i> <br>
  *   The presentation's Periods. There must be at least one Period.
+ * @property {!Array.<string>} offlineSessionIds
+ *   <i>Defaults to [].</i> <br>
+ *   An array of EME sessions to load for offline playback.
  * @property {number} minBufferTime
  *   <i>Defaults to 0.</i> <br>
  *   The minimum number of seconds of content that must be buffered before
@@ -111,7 +115,7 @@ shakaExtern.Period;
  * @description
  * Explicit initialization data, which override any initialization data in the
  * content. The initDataType values and the formats that they correspond to
- * are specified {@link http://goo.gl/hKBdff here}.
+ * are specified {@link https://goo.gl/TNjYwn here}.
  *
  * @property {!Uint8Array} initData
  *   Initialization data in the format indicated by initDataType.
@@ -264,9 +268,11 @@ shakaExtern.GetSegmentReferenceFunction;
  *   width: (number|undefined),
  *   height: (number|undefined),
  *   kind: (string|undefined),
+ *   encrypted: boolean,
  *   keyId: ?string,
  *   allowedByApplication: boolean,
- *   allowedByKeySystem: boolean
+ *   allowedByKeySystem: boolean,
+ *   hasOutputRestrictions: boolean
  * }}
  *
  * @description
@@ -322,6 +328,9 @@ shakaExtern.GetSegmentReferenceFunction;
  *   <i>Text streams only.</i> <br>
  *   The kind of text stream.  For example, 'captions' or 'subtitles'.
  *   @see https://goo.gl/k1HWA6
+ * @property {boolean} encrypted
+ *   <i>Defaults to false.</i><br>
+ *   True if the stream is encrypted.
  * @property {?string} keyId
  *   <i>Defaults to null (i.e., unencrypted or key ID unknown).</i> <br>
  *   The stream's key ID as a lowercase hex string. This key ID identifies the
@@ -335,6 +344,10 @@ shakaExtern.GetSegmentReferenceFunction;
  *   <i>Defaults to true.</i><br>
  *   Set by the Player to indicate whether the stream is allowed to be played
  *   by the key system.
+ * @property {boolean} hasOutputRestrictions
+ *   <i>Defaults to false.</i><br>
+ *   Set by the Player to indicate whether the stream has output restrictions
+ *   set by the key system.
  *
  * @exportDoc
  */
