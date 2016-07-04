@@ -178,7 +178,7 @@ app.init = function() {
     disableCacheBustingEvenThoughItMayAffectBandwidthEstimation: true
   });
   
-  app.estimator_ = new shaka.util.EWMABandwidthEstimator();
+  app.estimator_ = new shaka.vimond.PessimisticBandwidthEstimator();
   playerControls.setPlayer(app.player_);
 
   // Load the adaptation setting.
@@ -772,11 +772,11 @@ app.loadDashStream = function() {
   } else {
     console.assert(app.estimator_);
     var extendedConfig = app.extendedConfigurationManager.getAndStoreConfiguration();
-    if (app.estimator_.getDataAge() >= 3600) {
+    //if (app.estimator_.getDataAge() >= 3600) {
       // Disregard any bandwidth data older than one hour.  The user may have
       // changed networks if they are on a laptop or mobile device.
-      app.estimator_ = new shaka.util.EWMABandwidthEstimator();
-    }
+    //  app.estimator_ = new shaka.vimond.PessimisticBandwidthEstimator();
+    //}
 
     extendedConfig = extendedConfig || {};
     extendedConfig.manifestModifier = extendedConfig.manifestModifier || {};
