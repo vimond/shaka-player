@@ -101,14 +101,16 @@ shaka.vimond.MelodramaticAverage.prototype.detectSuddenAndDefiniteDrop_ = functi
     "use strict";
     this.history_.push(value);
     var returnValue = value;
-    if (value < this.relevanceThreshold_ && this.history_.length > 3) {
-        var relativeDiffs = this.history_.map(this.computeRelativeDifference_).filter(this.selectDramaticDrops_.bind(this));
-        //shaka.log.info('Last values: ' + this.history_.map(pretty).join(', ') + '. Dramatic drops: ', relativeDiffs.length);
-        if (relativeDiffs.length > 2) {
-            // At least three samples are radically lower than before.
-            // The mood has changed in a dramatic way.
-            shaka.log.info('Dramatic change in samples detected.', prettyPrint(this.history_[0]), prettyPrint(returnValue));
-            returnValue = Math.min.apply(Math, this.history_);
+    if (this.history_.length > 3) {
+        if (this.history_[0] < this.relevanceThreshold_) {
+            var relativeDiffs = this.history_.map(this.computeRelativeDifference_).filter(this.selectDramaticDrops_.bind(this));
+            //shaka.log.info('Last values: ' + this.history_.map(pretty).join(', ') + '. Dramatic drops: ', relativeDiffs.length);
+            if (relativeDiffs.length > 2) {
+                // At least three samples are radically lower than before.
+                // The mood has changed in a dramatic way.
+                shaka.log.info('Dramatic change in samples detected.', prettyPrint(this.history_[0]), prettyPrint(returnValue));
+                returnValue = Math.min.apply(Math, this.history_);
+            }
         }
         this.history_.shift();
     }

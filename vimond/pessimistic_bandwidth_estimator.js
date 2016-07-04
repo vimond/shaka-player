@@ -46,14 +46,14 @@ shaka.vimond.PessimisticBandwidthEstimator = function(melodramaticDropRatio, rel
      * Half of the estimate is based on the last 3 seconds of sample history.
      * @private {!shaka.vimond.MelodramaticAverage}
      */
-    this.fast_ = new shaka.vimond.MelodramaticAverage(3, melodramaticDropRatio || 0.2, relevanceThreshold || 3000000);
+    this.fast_ = new shaka.vimond.MelodramaticAverage(3, melodramaticDropRatio || 0.2, relevanceThreshold || 4000000);
 
     /**
      * A slow-moving average.
      * Half of the estimate is based on the last 8 seconds of sample history.
      * @private {!shaka.vimond.MelodramaticAverage}
      */
-    this.slow_ = new shaka.vimond.MelodramaticAverage(8, melodramaticDropRatio || 0.2, relevanceThreshold || 3000000);
+    this.slow_ = new shaka.vimond.MelodramaticAverage(8, melodramaticDropRatio || 0.2, relevanceThreshold || 4000000);
 
     /**
      * Prevents ultra-fast internal connections from causing crazy results.
