@@ -43,17 +43,17 @@ shaka.vimond.PessimisticBandwidthEstimator = function(melodramaticDropRatio, rel
 
     /**
      * A fast-moving average.
-     * Half of the estimate is based on the last 3 seconds of sample history.
+     * Half of the estimate is based on the last 2 seconds of sample history.
      * @private {!shaka.vimond.MelodramaticAverage}
      */
-    this.fast_ = new shaka.vimond.MelodramaticAverage(3, melodramaticDropRatio || 0.2, relevanceThreshold || 4000000);
+    this.fast_ = new shaka.vimond.MelodramaticAverage(4, melodramaticDropRatio || 0.2, relevanceThreshold || 2000000);
 
     /**
      * A slow-moving average.
-     * Half of the estimate is based on the last 8 seconds of sample history.
+     * Half of the estimate is based on the last 4 seconds of sample history.
      * @private {!shaka.vimond.MelodramaticAverage}
      */
-    this.slow_ = new shaka.vimond.MelodramaticAverage(8, melodramaticDropRatio || 0.2, relevanceThreshold || 4000000);
+    this.slow_ = new shaka.vimond.MelodramaticAverage(8, melodramaticDropRatio || 0.2, relevanceThreshold || 2000000);
 
     /**
      * Prevents ultra-fast internal connections from causing crazy results.
@@ -123,7 +123,7 @@ shaka.vimond.PessimisticBandwidthEstimator.prototype.getBandwidth = function() {
 
     // Take the minimum of these two estimates.  This should have the effect of
     // adapting down quickly, but up more slowly.
-    //shaka.log.info('Fast/slow bandwidth', (this.fast_.getEstimate() / 1000).toFixed(2), (this.slow_.getEstimate() / 1000).toFixed(2));
+    //shaka.log.info('Fast/slow bandwidth', prettyPrint(this.fast_.getEstimate()), prettyPrint(this.slow_.getEstimate()));
     return Math.min(this.fast_.getEstimate(), this.slow_.getEstimate());
 };
 

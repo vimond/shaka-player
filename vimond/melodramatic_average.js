@@ -102,7 +102,7 @@ shaka.vimond.MelodramaticAverage.prototype.detectSuddenAndDefiniteDrop_ = functi
     this.history_.push(value);
     var returnValue = value;
     if (this.history_.length > 3) {
-        if (this.history_[0] < this.relevanceThreshold_) {
+        if (value < this.relevanceThreshold_) {
             var relativeDiffs = this.history_.map(this.computeRelativeDifference_).filter(this.selectDramaticDrops_.bind(this));
             //shaka.log.info('Last values: ' + this.history_.map(pretty).join(', ') + '. Dramatic drops: ', relativeDiffs.length);
             if (relativeDiffs.length > 2) {
@@ -122,6 +122,7 @@ shaka.vimond.MelodramaticAverage.prototype.detectSuddenAndDefiniteDrop_ = functi
  */
 shaka.vimond.MelodramaticAverage.prototype.getEstimate = function() {
     var zeroFactor = 1 - Math.pow(this.alpha_, this.totalWeight_);
+    shaka.log.debug('Estimate / zeroFactor = output', prettyPrint(this.estimate_), zeroFactor.toFixed(2), prettyPrint(this.estimate_ / zeroFactor));
     return this.estimate_ / zeroFactor;
 };
 
