@@ -274,9 +274,14 @@ app.init = function() {
     app.cycleAudio();
   }
   app.video_.addEventListener('ended', function() {
+    console.log('Video element reported ended.');
     app.player_.destroy();
     app.resetCycleState_('videoTracks', 'cycleVideo', true);
     app.resetCycleState_('audioTracks', 'cycleAudio', false);
+  });
+  app.player_.addEventListener('ended', function() {
+    console.log('Shaka reported ended.');
+    app.player_.destroy();
   });
 };
 
