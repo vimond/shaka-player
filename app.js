@@ -814,6 +814,10 @@ app.load_ = function(videoSource) {
 
   var preferredLanguage = document.getElementById('preferredLanguage').value;
   app.player_.configure({'preferredLanguage': preferredLanguage});
+  app.player_.configure({
+    disableCacheBustingEvenThoughItMayAffectBandwidthEstimation: true
+  });
+
 
   app.player_.load(videoSource).then(appUtils.breakOutOfPromise(
       function() {
