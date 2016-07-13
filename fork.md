@@ -1,9 +1,13 @@
 # Vimond customizations to Shaka player
 
+Based on version 1.6.5 of the original repo.
+
 ### Summary
 
-* DASH manifest text preprocessor
-* Extraction and application of missing presentationTimeOffset
+* DASH manifest preprocessor
+  * MPD manifest textual preprocessor
+  * Extraction and application of missing presentationTimeOffset
+  * Big integer time code handling/workaround
 * Exposal of start date/time from where the stream positions offsets are computed
 * Dynamically updating exposed live state, relevant after live stream shutdown during time shifted playback
 * Accepting smaller segment sizes for bandwidth measurement for adaptive bitrate switching
@@ -75,7 +79,7 @@ The correct value for this attribute can be extracted from the segment timeline 
 
 Due to different segment durations, the start offsets for audio and video don't align. `lowest` sets the presentationTimeOffset to the lowest value among audio and video, `highest` finds the highest of the two possible values, and `firstVideo` always selects the video offset. The latter seems to work best.
 
-### Big integer timecode workaround
+#### Big integer timecode workaround
 
 This includes including a big integer third party library, manifest text processing with regexes, and reapplying correct offsets closer to the playback and segment URL resolution.
 
