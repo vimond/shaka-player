@@ -274,9 +274,14 @@ app.init = function() {
     app.cycleAudio();
   }
   app.video_.addEventListener('ended', function() {
+    console.log('Video element reported ended.');
     app.player_.destroy();
     app.resetCycleState_('videoTracks', 'cycleVideo', true);
     app.resetCycleState_('audioTracks', 'cycleAudio', false);
+  });
+  app.player_.addEventListener('ended', function() {
+    console.log('Shaka reported ended.');
+    app.player_.destroy();
   });
 };
 
@@ -809,6 +814,10 @@ app.load_ = function(videoSource) {
 
   var preferredLanguage = document.getElementById('preferredLanguage').value;
   app.player_.configure({'preferredLanguage': preferredLanguage});
+  app.player_.configure({
+    disableCacheBustingEvenThoughItMayAffectBandwidthEstimation: true
+  });
+  app.player_.configure({'enableShutdownOnLiveError': true});
 
   app.player_.load(videoSource).then(appUtils.breakOutOfPromise(
       function() {
