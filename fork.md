@@ -6,11 +6,11 @@
 * Extraction and application of missing presentationTimeOffset
 * Exposal of start date/time from where the stream positions offsets are computed
 * Dynamically updating exposed live state, relevant after live stream shutdown during time shifted playback
-* Preventing stalls on live edge by adding margin of 10 seconds
 * Accepting smaller segment sizes for bandwidth measurement for adaptive bitrate switching
 * Accepting relative values instead of full time codes when setting start playback times
+* Shutdown of live streams upon HTTP errors
+* suggestedPresentationDelay attribute for live streams also respected in segment timeline manifests.
 * Demo page convenience additions
-
 
 ### Build scripts for including customizations
 
@@ -109,10 +109,6 @@ If a viewer is e.g. five minutes behind the live edge, then there will five more
 
 The `isLive()` transition from `true` to `false` enables integrators to make their UI reflect the changed nature.
 
-### Preventing stalls on live edge by adding margin of 10 seconds
-
-With some streams, the play position was too close to the edge, and new segment weren't always available.
-
 ### Accepting smaller segment sizes for bandwidth measurement for adaptive bitrate switching
 
 The bandwidth estimator deactivated itself when the downloaded segments were smaller than 64 kB. This also meant that adaptive bitrate switching never occurred.
@@ -122,6 +118,10 @@ The lower segment size limit is reduced to 20 kB.
 ### setPlaybackStartTime accepts relative values
 
 In order to not needing to know the start timecode when setting the start playback time, a simple detection of relative values is added.
+
+### Handle 403s or 404s as "end of live stream"
+
+Activate by configuration: `player.configure({'enableShutdownOnLiveError': true})`
 
 ### Exposed log levels for external configuration
 
