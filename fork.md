@@ -6,6 +6,8 @@
 * Extraction and application of missing presentationTimeOffset
 * Exposal of start date/time from where the stream positions offsets are computed
 * Dynamically updating exposed live state, relevant after live stream shutdown during time shifted playback
+* Shutdown of live streams upon HTTP errors
+* suggestedPresentationDelay attribute for live streams also respected in segment timeline manifests.
 * Demo page convenience additions
 
 ### Build scripts for including customizations
@@ -96,6 +98,10 @@ If a viewer is e.g. five minutes behind the live edge, then there will five more
 * The cursor on the timeline will move to the right edge, instead of asymptotically approaching it.
 
 The `isLive()` transition from `true` to `false` enables integrators to make their UI reflect the changed nature.
+
+### Handle 403s or 404s as "end of live stream"
+
+Activate by configuration: `player.configure({'enableShutdownOnLiveError': true})`
 
 ### Exposed log levels for external configuration
 
