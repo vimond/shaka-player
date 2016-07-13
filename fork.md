@@ -1,4 +1,4 @@
-# Vimond customizations
+# Vimond customizations to Shaka player
 
 ### Summary
 
@@ -8,8 +8,10 @@
 * Dynamically updating exposed live state, relevant after live stream shutdown during time shifted playback
 * Accepting smaller segment sizes for bandwidth measurement for adaptive bitrate switching
 * Accepting relative values instead of full time codes when setting start playback times
-* Shutdown of live streams upon HTTP errors
-* suggestedPresentationDelay attribute for live streams also respected in segment timeline manifests.
+* Fix for serious performance issues when updating live stream manifests
+* New and more pessimistic bandwidth estimator, with quicker response to drops in bandwidth
+* Handle 403s or 404s as "end of live stream"
+* suggestedPresentationDelay attribute for live streams also respected in segment timeline manifests
 * Demo page convenience additions
 
 ### Build scripts for including customizations
@@ -32,15 +34,6 @@ This is an extension of the standard `shaka.player.DashVideoSource`, and its con
 This is a regex based manipulation of the DASH XML manifest after download, and before parsing. It can be used to correct data errors output from  streaming and encoder setups being misconfigured or not mature enough for current DASH clients.
 
 One or more manipulations can be added by specifying an array in the ManifestModificationSetup property `replacements`. The item(s) should align to the type [shaka.vimond.dash.ReplacementRule](https://github.com/vimond/shaka-player/blob/manifestmodifier/vimond/replacement_rule.js), with this structure:
-
-### Big integer timecode workaround
-
-This includes including a big integer third party library, manifest text processing with regexes, and reapplying correct offsets closer to the playback and segment URL resolution.
-
-Should be completely inactive until activated with the ManifestModificationSetup property `bigIntegersFixPolicy` set to `'default'`.
-
-To be documented later.
-
 
 ```Javascript
 {
@@ -82,6 +75,14 @@ The correct value for this attribute can be extracted from the segment timeline 
 
 Due to different segment durations, the start offsets for audio and video don't align. `lowest` sets the presentationTimeOffset to the lowest value among audio and video, `highest` finds the highest of the two possible values, and `firstVideo` always selects the video offset. The latter seems to work best.
 
+### Big integer timecode workaround
+
+This includes including a big integer third party library, manifest text processing with regexes, and reapplying correct offsets closer to the playback and segment URL resolution.
+
+Should be completely inactive until activated with the ManifestModificationSetup property `bigIntegersFixPolicy` set to `'default'`.
+
+To be documented later.
+
 ### Exposing a stream position's start date/time
 
 Live stream positions are reported as a number of seconds relative to a starting point. This isn't necessarily the start of the seekable range, due to different DVR characteristics. 
@@ -118,6 +119,16 @@ The lower segment size limit is reduced to 20 kB.
 ### setPlaybackStartTime accepts relative values
 
 In order to not needing to know the start timecode when setting the start playback time, a simple detection of relative values is added.
+
+### Fix for serious performance issues when updating live stream manifests
+
+Shaka player was iterating through the whole DVR timeline when updating the live manifest. There was some heavy processing for each segment specified in the timeline.
+
+The fix makes Shaka keep the processed segments between updates, and just removes expelled segments, and processes and adds new ones. A rather basic/simple workaround, that could break on more complex timelines.
+
+### New and more pessimistic bandwidth estimator, with quicker response to drops in bandwidth
+
+Work in progress.
 
 ### Handle 403s or 404s as "end of live stream"
 
