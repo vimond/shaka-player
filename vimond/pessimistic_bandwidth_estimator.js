@@ -32,8 +32,8 @@ goog.require('shaka.util.IBandwidthEstimator');
  *
  * @struct
  * @constructor
- * @param {number} melodramaticDropRatio A value between 0 and 1 indicating the lowest relative change considered to be melodramatic. Always considered negative.
- * @param {number} relevanceThreshold No need making fuzz about it, if the bandwidth is great anyway. This is the threshold for great. Corresponds to highest available bitrate.
+ * @param {number=} melodramaticDropRatio A value between 0 and 1 indicating the lowest relative change considered to be melodramatic. Always considered negative.
+ * @param {number=} relevanceThreshold No need making fuzz about it, if the bandwidth is great anyway. This is the threshold for great. Corresponds to highest available bitrate.
  * @extends {shaka.util.FakeEventTarget}
  * @implements {shaka.util.IBandwidthEstimator}
  * @export
