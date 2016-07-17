@@ -177,8 +177,8 @@ app.init = function() {
   app.player_.configure({
     disableCacheBustingEvenThoughItMayAffectBandwidthEstimation: true
   });
-  
-  app.estimator_ = new shaka.vimond.PessimisticBandwidthEstimator();
+
+  app.estimator_ = new shaka.vimond.PessimisticBandwidthEstimator(0, 0);
   playerControls.setPlayer(app.player_);
 
   // Load the adaptation setting.
@@ -256,7 +256,7 @@ app.init = function() {
   } else {
     document.getElementById('customLicenseServerUrlInput').value = window.localStorage.getItem('shakaLicenseUrl') || '';
   }
-  
+
   if ('dash' in params) {
     document.getElementById('streamTypeList').value = 'dash';
     app.loadStream();
@@ -736,7 +736,7 @@ app.loadStream = function() {
 app.unloadStream = function() {
   app.player_.unload();
 };
-  
+
 /**
  * Loads an http stream.
  */
@@ -754,7 +754,7 @@ app.loadHttpStream = function() {
 
 
 /*
- { 
+ {
  "manifestModifier": {
  "replacements": [{
  "match": "(\"mp4a\\.40\\.2\")+",
@@ -786,7 +786,7 @@ app.loadDashStream = function() {
     extendedConfig = extendedConfig || {};
     extendedConfig.manifestModifier = extendedConfig.manifestModifier || {};
     extendedConfig.manifestModifier.bigIntegersFixPolicy = 'default';
-    
+
     var estimator = /** @type {!shaka.util.IBandwidthEstimator} */(
         app.estimator_);
     var abrManager = new shaka.media.SimpleAbrManager();
@@ -798,7 +798,7 @@ app.loadDashStream = function() {
                 null, app.player_, wvServerUrl),
             estimator,
             abrManager, null, extendedConfig && extendedConfig.manifestModifier));
-    
+
   }
 };
 
