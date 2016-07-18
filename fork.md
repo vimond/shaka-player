@@ -128,7 +128,7 @@ In order to not needing to know the start timecode when setting the start playba
 
 Shaka player was iterating through the whole DVR timeline when updating the live manifest. There was some heavy processing for each segment specified in the timeline.
 
-The fix makes Shaka keep the processed segments between updates, and just removes expelled segments, and processes and adds new ones. A rather basic/simple workaround, that could break on more complex timelines.
+An updated version of this fix makes Shaka defer the heaviest part, constructing segment URLs, to the point where a segment is about to be requested. This reduces the call frequency for each segment, from "on every manifest refresh" into "once".
 
 ### New and more pessimistic bandwidth estimator, with quicker response to drops in bandwidth
 
