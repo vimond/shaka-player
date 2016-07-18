@@ -831,7 +831,7 @@ app.load_ = function(videoSource) {
   app.player_.configure({
     disableCacheBustingEvenThoughItMayAffectBandwidthEstimation: true
   });
-  app.player_.configure({'enableShutdownOnLiveError': true});
+  //app.player_.configure({'enableShutdownOnLiveError': true});
 
   app.player_.load(videoSource).then(appUtils.breakOutOfPromise(
       function() {
