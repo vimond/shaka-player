@@ -164,6 +164,13 @@ app.init = function() {
 
   app.player_ =
       new shaka.player.Player(/** @type {!HTMLVideoElement} */ (app.video_));
+  
+  app.video_.addEventListener('encrypted', function(evt) {
+    "use strict";
+    console.log('***** Encrypted is fired!', evt);
+  });
+  
+  
   app.player_.addEventListener('error', app.onPlayerError_);
   app.player_.addEventListener('adaptation', app.displayMetadata_);
   app.player_.addEventListener('bufferingStart',
@@ -178,7 +185,7 @@ app.init = function() {
     disableCacheBustingEvenThoughItMayAffectBandwidthEstimation: true
   });
 
-  app.estimator_ = new shaka.vimond.PessimisticBandwidthEstimator(0, 0);
+  app.estimator_ = new shaka.util.EWMABandwidthEstimator();
   playerControls.setPlayer(app.player_);
 
   // Load the adaptation setting.
@@ -828,10 +835,7 @@ app.load_ = function(videoSource) {
 
   var preferredLanguage = document.getElementById('preferredLanguage').value;
   app.player_.configure({'preferredLanguage': preferredLanguage});
-  app.player_.configure({
-    disableCacheBustingEvenThoughItMayAffectBandwidthEstimation: true
-  });
-  //app.player_.configure({'enableShutdownOnLiveError': true});
+  app.player_.configure({'disableCacheBustingEvenThoughItMayAffectBandwidthEstimation': true});
 
   app.player_.load(videoSource).then(appUtils.breakOutOfPromise(
       function() {
