@@ -158,7 +158,7 @@ There are three configuration settings related to this. When enableWithCredentia
 
 Full example:
 
-```JSON
+```Javascript
 videoEngine: {
         dash: {
             shaka: {
