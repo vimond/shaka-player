@@ -798,6 +798,7 @@ app.loadDashStream = function() {
         app.estimator_);
     var abrManager = new shaka.media.SimpleAbrManager();
     var wvServerUrl = document.getElementById('customLicenseServerUrlInput').value;
+    //app.player_.setPlaybackStartTime(20);
     app.load_(
         new shaka.vimond.player.ModifyableDashVideoSource(
             mediaUrl,
