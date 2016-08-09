@@ -157,16 +157,3 @@ This is needed for overriding adaptive bitrate. Appears to be a miss in the orig
 There are three configuration settings outside shaka-player are related to this. When enableWithCredentialsOnHTTPAndMatchedCookie is set to true, new RegExp(enableWithCredentialsOnHTTPAndMatchedCookieRegExpString, enableWithCredentialsOnHTTPAndMatchedCookieRegExpOption) will be further checked against document.cookie before setting shaka.util.AjaxRequest.enableWithCredentialsOnHTTP to true in shaka-player. shaka.util.FailoverUri.prototype.isHttp will be checked too before setting withCredentials to true in XHR eventually.
 
 NOTE : A wildcard '\*' cannot be used in the 'Access-Control-Allow-Origin' header when the credentials flag is true.
-
-Full example of configuration outside shaka-player:
-
-```Javascript
-videoEngine: {
-        dash: {
-            shaka: {
-                enableWithCredentialsOnHTTPAndMatchedCookie: true,
-                enableWithCredentialsOnHTTPAndMatchedCookieRegExpString: '(^|;)\s*userId=',
-                enableWithCredentialsOnHTTPAndMatchedCookieRegExpOption: ''
-            }
-        }
-```
