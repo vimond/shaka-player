@@ -34,11 +34,13 @@ goog.require('shaka.util.IBandwidthEstimator');
  * @constructor
  * @param {number=} melodramaticDropRatio A value between 0 and 1 indicating the lowest relative change considered to be melodramatic. Always considered negative.
  * @param {number=} relevanceThreshold No need making fuzz about it, if the bandwidth is great anyway. This is the threshold for great. Corresponds to highest available bitrate.
+ * @param {number=} fastHalfLife For overriding the fast average sample history length
+ * @param {number=} slowHalfLife For overriding the slow average sample history length
  * @extends {shaka.util.FakeEventTarget}
  * @implements {shaka.util.IBandwidthEstimator}
  * @export
  */
-shaka.vimond.PessimisticBandwidthEstimator = function(melodramaticDropRatio, relevanceThreshold) {
+shaka.vimond.PessimisticBandwidthEstimator = function(melodramaticDropRatio, relevanceThreshold, fastHalfLife, slowHalfLife) {
     shaka.util.FakeEventTarget.call(this, null);
 
     /**
@@ -46,14 +48,14 @@ shaka.vimond.PessimisticBandwidthEstimator = function(melodramaticDropRatio, rel
      * Half of the estimate is based on the last 2 seconds of sample history.
      * @private {!shaka.vimond.MelodramaticAverage}
      */
-    this.fast_ = new shaka.vimond.MelodramaticAverage(4, melodramaticDropRatio || 0.2, relevanceThreshold || 2000000);
+    this.fast_ = new shaka.vimond.MelodramaticAverage(fastHalfLife || 4, melodramaticDropRatio || 0.2, relevanceThreshold || 2000000);
 
     /**
      * A slow-moving average.
      * Half of the estimate is based on the last 4 seconds of sample history.
      * @private {!shaka.vimond.MelodramaticAverage}
      */
-    this.slow_ = new shaka.vimond.MelodramaticAverage(8, melodramaticDropRatio || 0.2, relevanceThreshold || 2000000);
+    this.slow_ = new shaka.vimond.MelodramaticAverage(slowHalfLife || 8, melodramaticDropRatio || 0.2, relevanceThreshold || 2000000);
 
     /**
      * Prevents ultra-fast internal connections from causing crazy results.
