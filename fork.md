@@ -17,12 +17,13 @@ Based on version 1.6.5 of the original repo.
 * Handle 403s or 404s as "end of live stream"
 * suggestedPresentationDelay attribute for live streams also respected in segment timeline manifests
 * Demo page convenience additions
+* Make withCredentials for XHR configurable via player configuration
 
 ### Build scripts for including customizations
 
 Variations on build.sh and all.sh are added, [build-vup-debug](https://github.com/vimond/shaka-player/blob/manifestmodifier/build/build-vup-debug.sh),  [lib-vup-debug.sh](https://github.com/vimond/shaka-player/blob/manifestmodifier/build/lib-vup-debug.sh), and [all-vup-debug.sh](https://github.com/vimond/shaka-player/blob/manifestmodifier/build/all-vup-debug.sh).
 
-For including the Vimond extensions, use 
+For including the Vimond extensions, use
 ```Shell
 ./build/all-vup-debug.sh
 ```
@@ -89,9 +90,9 @@ To be documented later.
 
 ### Exposing a stream position's start date/time
 
-Live stream positions are reported as a number of seconds relative to a starting point. This isn't necessarily the start of the seekable range, due to different DVR characteristics. 
+Live stream positions are reported as a number of seconds relative to a starting point. This isn't necessarily the start of the seekable range, due to different DVR characteristics.
 
-Instead they are offset to the DASH manifest's `availabilityStartTime` attribute. 
+Instead they are offset to the DASH manifest's `availabilityStartTime` attribute.
 
 In order to be able to map stream positions to dates and wall clock times, the `availabilityStartTime` date/time is exposed through a callback function.
 
@@ -150,3 +151,9 @@ This is needed for overriding adaptive bitrate. Appears to be a miss in the orig
 
 * Configuration text area that can parse a JSON string and apply it as the ManifestModificationSetup parameter mentioned above.
 * Last used stream and license URLs are remembered.
+
+### Make withCredentials for XHR configurable
+
+There are three configuration settings outside shaka-player are related to this. When enableWithCredentialsOnHTTPAndMatchedCookie is set to true, new RegExp(enableWithCredentialsOnHTTPAndMatchedCookieRegExpString, enableWithCredentialsOnHTTPAndMatchedCookieRegExpOption) will be further checked against document.cookie before setting shaka.util.AjaxRequest.enableWithCredentialsOnHTTP to true in shaka-player. shaka.util.FailoverUri.prototype.isHttp will be checked too before setting withCredentials to true in XHR eventually.
+
+NOTE : A wildcard '\*' cannot be used in the 'Access-Control-Allow-Origin' header when the credentials flag is true.

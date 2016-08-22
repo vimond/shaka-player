@@ -787,7 +787,7 @@ app.loadDashStream = function() {
     //if (app.estimator_.getDataAge() >= 3600) {
       // Disregard any bandwidth data older than one hour.  The user may have
       // changed networks if they are on a laptop or mobile device.
-    //  app.estimator_ = new shaka.vimond.PessimisticBandwidthEstimator();
+      app.estimator_ = new shaka.vimond.PessimisticBandwidthEstimator();
     //}
 
     extendedConfig = extendedConfig || {};
@@ -798,6 +798,7 @@ app.loadDashStream = function() {
         app.estimator_);
     var abrManager = new shaka.media.SimpleAbrManager();
     var wvServerUrl = document.getElementById('customLicenseServerUrlInput').value;
+    //app.player_.setPlaybackStartTime(20);
     app.load_(
         new shaka.vimond.player.ModifyableDashVideoSource(
             mediaUrl,
