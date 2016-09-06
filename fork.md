@@ -18,6 +18,7 @@ Based on version 1.6.5 of the original repo.
 * suggestedPresentationDelay attribute for live streams also respected in segment timeline manifests
 * Demo page convenience additions
 * Make withCredentials for XHR configurable via player configuration
+* Remove a few seconds (controlled by `shaka.player.Defaults.REMOVE_BUFFER_SIZE_AT_QUOTAEXCEPTIONERROR`) of source buffer when QuotaExceededError occurred
 
 ### Build scripts for including customizations
 
