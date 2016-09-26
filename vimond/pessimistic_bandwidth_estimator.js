@@ -114,7 +114,7 @@ shaka.vimond.PessimisticBandwidthEstimator.prototype.sample = function(delayMs, 
         'type': 'bandwidth'
     }));
 
-    this.lastSampleTime_ = Date.now();
+    this.lastSampleTime_ = new Date().getTime();
 };
 
 /** @override */
@@ -129,10 +129,9 @@ shaka.vimond.PessimisticBandwidthEstimator.prototype.getBandwidth = function() {
     return Math.min(this.fast_.getEstimate(), this.slow_.getEstimate());
 };
 
-
 /** @override */
 shaka.vimond.PessimisticBandwidthEstimator.prototype.getDataAge = function() {
-    return (Date.now() - this.lastSampleTime_) / 1000;
+    return (new Date().getTime() - this.lastSampleTime_) / 1000;
 };
 
 
