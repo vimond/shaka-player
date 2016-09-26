@@ -33,7 +33,7 @@ For including the Vimond extensions, use
 
 The Vimond DASH preprocessor can be activated by passing a [`shaka.vimond.player.ModifyableDashVideoSource`](https://github.com/vimond/shaka-player/blob/manifestmodifier/vimond/modifyable_dash_video_source.js) [sic] instance in the Shaka player's `load()` method.
 
-This is an extension of the standard `shaka.player.DashVideoSource`, and its constructor takes two additional optional arguments, the latter of type [`shaka.vimond.dash.ManifestModificationSetup`](https://github.com/vimond/shaka-player/blob/manifestmodifier/vimond/manifest_modification_setup.js). Passing an instance of this to the constructor, can cover one or both of the preprocessing options discussed below.
+This is an extension of the standard `shaka.player.DashVideoSource`, and its constructor takes two additional optional arguments, the latter of type [`shaka.vimond.dash.ManifestModificationSetup`](https://github.com/vimond/shaka-player/blob/manifestmodifier/vimond/manifest_modification_setup.js). Passing an instance of this to the constructor, can cover one, two, or all of the preprocessing options discussed below.
 
 #### Textual manipulation of manifest XML source
 
