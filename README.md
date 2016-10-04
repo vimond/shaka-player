@@ -25,7 +25,7 @@ and multilingual content. And best of all, it's free!
 
 Please see the branch [all-workarounds].
 
-[all-workarounds]: ./tree/all-workarounds
+[all-workarounds]: /vimond/shaka-player/tree/all-workarounds
 
 ## Important Links ##
 
