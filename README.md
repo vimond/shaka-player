@@ -19,6 +19,11 @@ And best of all, it's free!
 [MediaSource Extensions]: http://w3c.github.io/media-source/
 [Encrypted Media Extensions]: https://w3c.github.io/encrypted-media/
 
+## Vimond customisations and tweaks
+
+[Summary of the customisations, fixes and tweaks] done by Vimond.
+
+[Summary of the customisations, fixes and tweaks]: ./fork.md
 
 ## Dependencies ##
 
