@@ -36,11 +36,12 @@ goog.require('shaka.util.IBandwidthEstimator');
  * @param {number=} relevanceThreshold No need making fuzz about it, if the bandwidth is great anyway. This is the threshold for great. Corresponds to highest available bitrate.
  * @param {number=} fastHalfLife For overriding the fast average sample history length
  * @param {number=} slowHalfLife For overriding the slow average sample history length
+ * @param {number=} defaultBandwidth For initializing a defaultBandwidth in bits
  * @extends {shaka.util.FakeEventTarget}
  * @implements {shaka.util.IBandwidthEstimator}
  * @export
  */
-shaka.vimond.PessimisticBandwidthEstimator = function(melodramaticDropRatio, relevanceThreshold, fastHalfLife, slowHalfLife) {
+shaka.vimond.PessimisticBandwidthEstimator = function(melodramaticDropRatio, relevanceThreshold, fastHalfLife, slowHalfLife, defaultBandwidth) {
     shaka.util.FakeEventTarget.call(this, null);
 
     /**
@@ -67,9 +68,8 @@ shaka.vimond.PessimisticBandwidthEstimator = function(melodramaticDropRatio, rel
     /**
      * Initial estimate used when there is not enough data.
      * @private {number}
-     * @const
      */
-    this.defaultEstimate_ = 5e5;  // 500kbps
+    this.defaultEstimate_ = defaultBandwidth || 5e5;  // 500kbps
 
     /**
      * Minimum weight required to trust the estimate.
@@ -140,4 +140,3 @@ shaka.vimond.PessimisticBandwidthEstimator.prototype.getDataAge = function() {
 shaka.vimond.PessimisticBandwidthEstimator.prototype.supportsCaching = function() {
     return false;
 };
-
