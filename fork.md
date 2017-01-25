@@ -16,6 +16,7 @@ Based on version 1.6.5 of the original repo.
 * New and more pessimistic bandwidth estimator, with quicker response to drops in bandwidth
 * Handle 403s or 404s as "end of live stream"
 * suggestedPresentationDelay attribute for live streams also respected in segment timeline manifests
+* Working around issues with seeking outside the range (before earliest segment start time) occurring because of JS floating point precision errors for timestamp corrections
 * Demo page convenience additions
 * Make withCredentials for XHR configurable via player configuration
 * Remove a few seconds (controlled by `shaka.player.Defaults.REMOVE_BUFFER_SIZE_AT_QUOTAEXCEPTIONERROR`) of source buffer when QuotaExceededError occurred
@@ -139,6 +140,19 @@ Work in progress.
 ### Handle 403s or 404s as "end of live stream"
 
 Activate by configuration: `player.configure({'enableShutdownOnLiveError': true})`
+
+### Workaround for seeking out of range (in the lower end) thanks to JS floating point precision errors
+
+When supplying a fairly big `playbackStartTime`, e.g. 1000 (seconds), timestamp corrections with decimals of seconds are not precisely computed. The result is slightly greater than it should have been, thanks to a long tail of decimals added. 
+
+When later seeking to 0, there is a discrepancy in the corrected 0 position without the extra decimals, compared to the range of segments, whose positions are shifted with the slightly bigger number with a lot of decimals. The first segment's start time is greater than the desired position, and the playback has failed because it can't find any
+segments to fetch for that position.
+
+The segment lookup in the mehtod `getNext_` in stream.js is adjustedh so that if the desired position is less than the earliest segment start time, the earliest segment is selected.
+
+Even if this fixes the seek issue, the inaccurate timestamp correction number might appear to cause other problems. 
+
+A `subtractWithoutFloatErrors_` method is prepared, but not activated, in source_buffer_manager.js. This might later be applied to the `timestampCorrection = actualTimestamp - expectedTimestamp` computation, deep down in the `fetch` method in this file, in order to reduce other problems.
 
 ### Exposed log levels for external configuration
 
