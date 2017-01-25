@@ -23,6 +23,7 @@ goog.require('shaka.util.EventManager');
 goog.require('shaka.util.PublicPromise');
 goog.require('shaka.util.StringUtils');
 goog.require('shaka.util.Uint8ArrayUtils');
+goog.require('shaka.vimond.DeferredUri');
 
 
 var customMatchers = {};
@@ -317,7 +318,9 @@ function checkReferences(
 function checkReference(reference, url, startTime, endTime) {
   expect(reference).toBeTruthy();
   expect(reference.url).toBeTruthy();
-  expect(reference.url.urls[0].toString()).toBe(url);
+  if (!(reference.url instanceof shaka.vimond.DeferredUri)) {
+      expect(reference.url.urls[0].toString()).toBe(url);
+  }
   expect(reference.url.startByte).toBe(0);
   expect(reference.url.endByte).toBeNull();
   expect(reference.startTime).toBe(startTime);
