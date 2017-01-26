@@ -23,7 +23,7 @@
 var app = function() {};
 
 var sim = getFixedStartSimulator();
-app.mutateManifestFn = sim.mutateManifest;
+app.doWhateverYouWantWithTheMpd = sim.transformManifest;
 
 /**
  * The video element owned by the app.
@@ -790,7 +790,7 @@ app.loadDashStream = function() {
     extendedConfig = extendedConfig || {};
     extendedConfig.manifestModifier = extendedConfig.manifestModifier || {};
     extendedConfig.manifestModifier.bigIntegersFixPolicy = 'default';
-    extendedConfig.manifestModifier.mutateManifestFn = app.mutateManifestFn;
+    extendedConfig.manifestModifier.doWhateverYouWantWithTheMpd = app.doWhateverYouWantWithTheMpd;
 
     var estimator = /** @type {!shaka.util.IBandwidthEstimator} */(
         app.estimator_);

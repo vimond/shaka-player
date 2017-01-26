@@ -11,10 +11,12 @@ var availabilityStartTime = 1484916750;
 var earlyFixedStart = 38007905420; // Right after audio t=38007905400
 var originals = [{
     url: 'assets/live-1.xml',
+    videoStartNumber: 211065,
     videoArrayLength: 1,
     videoRepeat: 1799,
     videoDuration: 180000,
     videoStartTime: 37991523600,
+    audioStartNumber: 211065,
     audioArrayLength: 900,
     audioStartTime: 37991523960,
     audioLastStartTime: 38315345400,
@@ -22,19 +24,23 @@ var originals = [{
     audioLastRepeat: null,
     early: {
         fixedStart: earlyFixedStart, // Inside 10th audio segment in live-3.xml
+        videoStartNumber: 211156, // Constant.
         videoArrayLength: 1, // Constant.
         videoRepeat: 1799 - 91,
         videoDuration: 180000, // Constant.
         videoStartTime: 38007903600, // Constant. Snap to previous
+        audioStartNumber: 211156, // Constant. 211156
         audioArrayLength: 855,
         audioStartTime: 38007905400 // Constant. Snap to previous
     }
 },{
     url: 'assets/live-2.xml',
+    videoStartNumber: 211114,
     videoArrayLength: 1,
     videoRepeat: 1799,
     videoDuration: 180000,
     videoStartTime: 38000343600,
+    audioStartNumber: 211114,
     audioArrayLength: 901,
     audioStartTime: 38000344440,
     audioLastStartTime: 38324163960,
@@ -42,19 +48,23 @@ var originals = [{
     audioLastRepeat: null,
     early: {
         fixedStart: earlyFixedStart, // Inside 10th audio segment in live-3.xml
+        videoStartNumber: 211156, // Constant.
         videoArrayLength: 1, // Constant.
         videoRepeat: 1799-42,
         videoDuration: 180000, // Constant.
         videoStartTime: 38007903600, // Constant. Snap to previous
+        audioStartNumber: 211156, // Constant.
         audioArrayLength: 880,
         audioStartTime: 38007905400 // Constant. Snap to previous
     }
 },{
     url: 'assets/live-3.xml',
+    videoStartNumber: 211138,
     videoArrayLength: 1,
     videoRepeat: 1799,
     videoDuration: 180000,
     videoStartTime: 38004663600,
+    audioStartNumber: 211138,
     audioArrayLength: 901,
     audioStartTime: 38004664440,
     audioLastStartTime: 38328483960,
@@ -62,10 +72,12 @@ var originals = [{
     audioLastRepeat: null,
     early: {
         fixedStart: earlyFixedStart, // Inside 10th audio segment in live-3.xml
+        videoStartNumber: 211156, // Constant.
         videoArrayLength: 1, // Constant.
         videoRepeat: 1799-18,
         videoDuration: 180000, // Constant.
         videoStartTime: 38007903600, // Constant. Snap to previous
+        audioStartNumber: 211156, // Constant.
         audioArrayLength: 892,
         audioStartTime: 38007905400 // Constant. Snap to previous
     }
@@ -84,20 +96,18 @@ function checkShortTimePoints(timePoints, startTime, repeat, duration) {
 function getAndProcessMpd(url, sim) {
     "use strict";
     var failoverUri = new shaka.util.FailoverUri(null, [url]);
-    var request = new shaka.vimond.dash.PreprocessableMpdRequest(failoverUri, null, { mutateManifestFn: sim && sim.mutateManifest });
+    var request = new shaka.vimond.dash.PreprocessableMpdRequest(failoverUri, null, { doWhateverYouWantWithTheMpd: sim && sim.transformManifest });
     return request.send();
 }
 
-function extractTimelines(mpd) {
+function extractSegmentTemplates(mpd) {
     "use strict";
-    var p = mpd.periods[0],
-        timelineVideo = p.adaptationSets[0].representations[0].segmentTemplate.timeline,
-        timelineAudio = p.adaptationSets[1].representations[0].segmentTemplate.timeline;
+    var p = mpd.periods[0];
     
     // TODO: Cover all video timelines?
     return {
-        video: timelineVideo,
-        audio: timelineAudio
+        video: p.adaptationSets[0].representations[0].segmentTemplate,
+        audio: p.adaptationSets[1].representations[0].segmentTemplate
     };
 }
 
@@ -107,15 +117,21 @@ function testOriginalMpds(done) {
         //return function() {
             return getAndProcessMpd(original.url).then(function(mpd) {
                 expect(mpd.availabilityStartTime).toBe(availabilityStartTime);
-                var timelines = extractTimelines(mpd);
-                expect(timelines.video.timePoints.length).toBe(original.videoArrayLength);
-                expect(timelines.video.timePoints[0].repeat).toBe(original.videoRepeat);
-                expect(timelines.video.timePoints[0].startTime).toBe(original.videoStartTime);
-                expect(timelines.video.timePoints[0].duration).toBe(original.videoDuration);
-                expect(timelines.audio.timePoints.length).toBe(original.audioArrayLength);
-                expect(timelines.audio.timePoints[0].startTime).toBe(original.audioStartTime);
+                var segmentTemplates = extractSegmentTemplates(mpd),
+                    videoTimepoints = segmentTemplates.video.timeline.timePoints,
+                    audioTimepoints = segmentTemplates.audio.timeline.timePoints;
                 
-                var lastAudio = timelines.audio.timePoints[timelines.audio.timePoints.length - 1];
+                expect(segmentTemplates.video.startNumber).toBe(original.videoStartNumber);
+                expect(videoTimepoints.length).toBe(original.videoArrayLength);
+                expect(videoTimepoints[0].repeat).toBe(original.videoRepeat);
+                expect(videoTimepoints[0].startTime).toBe(original.videoStartTime);
+                expect(videoTimepoints[0].duration).toBe(original.videoDuration);
+                
+                expect(segmentTemplates.audio.startNumber).toBe(original.audioStartNumber);
+                expect(audioTimepoints.length).toBe(original.audioArrayLength);
+                expect(audioTimepoints[0].startTime).toBe(original.audioStartTime);
+                
+                var lastAudio = audioTimepoints[audioTimepoints.length - 1];
                 expect(lastAudio.startTime).toBe(original.audioLastStartTime);
                 expect(lastAudio.duration).toBe(original.audioLastDuration);
                 expect(lastAudio.repeat).toBe(original.audioLastRepeat);
@@ -137,15 +153,22 @@ function testEarlyFixedStart(done) {
     var promises = originals.map(function(original) {
         //return function() {
         return getAndProcessMpd(original.url, sim).then(function(mpd) {
-            var timelines = extractTimelines(mpd);
-            expect(timelines.video.timePoints.length).toBe(original.early.videoArrayLength);
-            expect(timelines.video.timePoints[0].repeat).toBe(original.early.videoRepeat);
-            expect(timelines.video.timePoints[0].startTime).toBe(original.early.videoStartTime);
-            expect(timelines.video.timePoints[0].duration).toBe(original.early.videoDuration);
+            expect(mpd.availabilityStartTime).toBe(availabilityStartTime);
+            var segmentTemplates = extractSegmentTemplates(mpd),
+                videoTimepoints = segmentTemplates.video.timeline.timePoints,
+                audioTimepoints = segmentTemplates.audio.timeline.timePoints;
+
+            expect(segmentTemplates.video.startNumber).toBe(original.early.videoStartNumber);
+            expect(videoTimepoints.length).toBe(original.early.videoArrayLength);
+            expect(videoTimepoints[0].repeat).toBe(original.early.videoRepeat);
+            expect(videoTimepoints[0].startTime).toBe(original.early.videoStartTime);
+            expect(videoTimepoints[0].duration).toBe(original.early.videoDuration);
+
+            expect(segmentTemplates.audio.startNumber).toBe(original.early.audioStartNumber);
+            expect(audioTimepoints.length).toBe(original.early.audioArrayLength);
+            expect(audioTimepoints[0].startTime).toBe(original.early.audioStartTime);
             
-            expect(timelines.audio.timePoints.length).toBe(original.early.audioArrayLength);
-            expect(timelines.audio.timePoints[0].startTime).toBe(original.early.audioStartTime);
-            var lastAudio = timelines.audio.timePoints[timelines.audio.timePoints.length - 1];
+            var lastAudio = audioTimepoints[audioTimepoints.length - 1];
             expect(lastAudio.startTime).toBe(original.audioLastStartTime);
             expect(lastAudio.duration).toBe(original.audioLastDuration);
             expect(lastAudio.repeat).toBe(original.audioLastRepeat);

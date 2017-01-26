@@ -58,5 +58,9 @@
     // This file contains goog.require calls for all exported classes.
     loadScript('shaka-player.uncompiled.js');
   }
+  if (window.getFixedStartSimulator) {
+      window.fixedStartSimulator = window.getFixedStartSimulator();
+      window.transformShakaMpd = window.fixedStartSimulator.transformManifest;
+  }
 })();  // anonymous namespace
 

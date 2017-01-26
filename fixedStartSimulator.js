@@ -1,3 +1,32 @@
+
+function getProp(obj, propertyName, shortForm) {
+    "use strict";
+    return obj[propertyName] != null ? shortForm + '=' + obj[propertyName] : '';
+}
+
+function timePointToString(tp) {
+    "use strict";
+    return '{' + [getProp(tp, 'startTime', 's'), getProp(tp, 'duration', 'd'), getProp(tp, 'repeat', 'r')].filter(function(t) {return t;}).join(',') + '}';
+}
+
+function timePointsToString(array) {
+    "use strict";
+    if (array.length > 1) {
+        return 'Start: ' + timePointToString(array[0]) + ' End: ' + timePointToString(array[array.length - 1]);
+    } else if( array.length === 1) {
+        return 'Single entry: ' + timePointToString(array[0]);
+    } else {
+        return '(Empty)';
+    }
+}
+
+function findLiveEdge(array) {
+    return array.reduce(function(accumulated, currentTimePoint) {
+        var currentOffset = currentTimePoint.startTime || accumulated;
+        return currentOffset + (currentTimePoint.duration * (1 + currentTimePoint.repeat || 0));
+    }, 0);
+}
+
 function getFixedStartSimulator(){
     "use strict";
     // All time codes are scaled
@@ -11,40 +40,20 @@ function getFixedStartSimulator(){
     if (storedFixedStart) {
         fixedStart = parseInt(storedFixedStart, 10);
     }
-    
-    function findLiveEdge(array) {
-        return array.reduce(function(accumulated, currentTimePoint) {
-            var currentOffset = currentTimePoint.startTime || accumulated;
-            return currentOffset + (currentTimePoint.duration * (1 + currentTimePoint.repeat || 0));
-        }, 0);
-    }
-   
-    function getProp(obj, propertyName, shortForm) {
-        return obj[propertyName] != null ? shortForm + '=' + obj[propertyName] : '';
-    }
-    
-    function timePointToString(tp) {
-        return '{' + [getProp(tp, 'startTime', 's'), getProp(tp, 'duration', 'd'), getProp(tp, 'repeat', 'r')].filter(function(t) {return t;}).join(',') + '}';
-    }
-    
-    function timePointsToString(array) {
-        if (array.length > 1) {
-            return 'Start: ' + timePointToString(array[0]) + ' End: ' + timePointToString(array[array.length - 1]);
-        } else if( array.length === 1) {
-            return 'Single entry: ' + timePointToString(array[0]);
-        } else {
-            return '(Empty)';
-        }
-    }
-    
-    
-    function removeTimePointsBeforeFixedStart(array) {
+
+    function removeTimePointsBeforeFixedStart(segmentTemplate) {
+        var array = segmentTemplate.timeline.timePoints;
+        
+        var originalStartNumber = segmentTemplate.startNumber;
+        var newStartNumber = originalStartNumber;
+        
         var currentTimePoint;
         var currentStartTime;
         var currentEndTime;
         var previousEndTime = 0;
         var currentMultiplier;
-        var numberOfSegments = 0;
+        var numberOfSegmentsRemoved = 0;
+        
         for (var i=0; i<array.length; i++) {
             currentTimePoint = array[i];
             currentStartTime = currentTimePoint.startTime;
@@ -61,13 +70,7 @@ function getFixedStartSimulator(){
             }
             if (currentStartTime > fixedStart) { // We have arrived at a segment after the fixedStart, without returning that sliced array with a new first timepoint.
                 enableLogging && console.log('What happened? firstStartTime: %s currentStartTime: %s offset first-fixed: %s offset current-fixed: %s', array[0].startTime, currentStartTime, (array[0].startTime || 0) - fixedStart, currentStartTime - fixedStart);
-                /*var previousPoint = array[i-1];
-                var prevStartTime = previousPoint.startTime;
-                var prevEndTime = prevStartTime + (previousPoint.duration * ((previousPoint.repeat || 0) + 1));
-                var isStartSmaller = prevStartTime < fixedStart;
-                var isEndBiggger = prevEndTime > fixedStart;
-                var netDuration = prevEndTime - prevStartTime;*/
-                return array;
+                return segmentTemplate;
             }
             currentMultiplier = currentTimePoint.repeat ? currentTimePoint.repeat + 1 : 1;
             currentEndTime = currentStartTime + (currentTimePoint.duration * currentMultiplier);
@@ -77,42 +80,66 @@ function getFixedStartSimulator(){
                 if (currentTimePoint.repeat) {
                     // We need to compute a new repeat and a new startTime
                     var newMultiplier = Math.ceil((currentEndTime - fixedStart) / currentTimePoint.duration); // Including the segment that contains the fixedStart position
-                    numberOfSegments += newMultiplier;
+                    numberOfSegmentsRemoved += (currentMultiplier - newMultiplier);
                     
                     newFirstTimePoint.startTime = currentStartTime + ((currentMultiplier - newMultiplier) * currentTimePoint.duration); // Start offset in count
                     newFirstTimePoint.repeat = newMultiplier < 2 ? null : newMultiplier - 1;
                 } else {
-                    if (currentTimePoint.startTime === currentStartTime) {
-                        // This timepoint can be used as it is.
-                    } else {
-                        // Set the startTime attribute.
-                        newFirstTimePoint.startTime = currentStartTime;
-                    }
-                    numberOfSegments += currentMultiplier;
-                    throw new Error('Tell antall segment forkasta, og oppdater startNumber!');
+                    // Time point with one segment.
+                    newFirstTimePoint.startTime = currentStartTime;
                 }
-                enableLogging && console.log('Left-truncating the segment timeline at time point %s, with start time %s (was %s). Total number of segments removed: %s', i+1, newFirstTimePoint.startTime, currentStartTime, numberOfSegments);
+                enableLogging && console.log('Left-truncating the segment timeline at time point %s, with start time %s (was %s). Total number of segments removed: %s', i+1, newFirstTimePoint.startTime, currentStartTime, numberOfSegmentsRemoved);
                 var newArray = [newFirstTimePoint].concat(array.slice(i+1));
                 enableLogging && console.log('Lengths. Old: %s New: %s', array.length, newArray.length);
-                return newArray;
+                
+                var newSegmentTemplate = segmentTemplate.clone();
+                newSegmentTemplate.startNumber = originalStartNumber + numberOfSegmentsRemoved;
+                newSegmentTemplate.timeline.timePoints = newArray;
+                
+                return newSegmentTemplate;
             } else {
-                numberOfSegments += currentMultiplier;
+                numberOfSegmentsRemoved += currentMultiplier;
                 previousEndTime = currentEndTime;
             }
         }
         //Fallback
         enableLogging && console.log('Current end time: %s fixedStart: %s difference: %s', currentEndTime, fixedStart, currentEndTime - fixedStart);
-        return array;
+        return segmentTemplate;
     }
     
-    function mutateManifest(adaptationSet, representation, mpd, timeline) {
-        currentLiveEdge = findLiveEdge(timeline.timePoints);
-        //
-        // enableLogging && console.log('Current live edge', currentLiveEdge);
-        timeline.timePoints = removeTimePointsBeforeFixedStart(timeline.timePoints);
-        if (enableLogging) {
-            console.log('Timeline for %s', adaptationSet.contentType, timePointsToString(timeline.timePoints));
-        }
+    function getSegmentTemplateContainers(mpd) {
+        var segmentTemplates = [];
+        mpd.periods.forEach(function (period) {
+            period.adaptationSets.forEach(function (adaptationSet) {
+                if (Array.isArray(adaptationSet.representations)) {
+                    adaptationSet.representations.forEach(function (representation) {
+                        if (representation.segmentTemplate) {
+                            segmentTemplates.push(representation);
+                        }
+                    });
+                }
+                if (adaptationSet.segmentTemplate) {
+                    segmentTemplates.push(adaptationSet);
+                }
+            });
+        });
+        return segmentTemplates;
+    }
+    
+    function transformManifest(mpd) {
+        var segmentTemplateContainers = getSegmentTemplateContainers(mpd);
+        segmentTemplateContainers.forEach(function(stc, index) {
+            if (index === 0) {
+                currentLiveEdge = findLiveEdge(stc.segmentTemplate.timeline.timePoints);
+            }
+            var newSegmentTemplate = removeTimePointsBeforeFixedStart(stc.segmentTemplate);
+            // The cheap and dirty way: Mutating the MPD object.
+            stc.segmentTemplate = newSegmentTemplate;
+        });
+        return mpd;
+        //if (enableLogging) {
+        //    console.log('Timeline for %s', adaptationSet.contentType, timePointsToString(timeline.timePoints));
+        //}
     }
 
     function setFixedStartPoint(startPoint) {
@@ -124,9 +151,10 @@ function getFixedStartSimulator(){
         return currentLiveEdge;
     }
     return {
-        mutateManifest: mutateManifest,
+        transformManifest: transformManifest,
         setFixedStartPoint: setFixedStartPoint,
         getCurrentLiveEdge: getCurrentLiveEdge,
+        setLiveEdgeAsStartPoint: function() { setFixedStartPoint(getCurrentLiveEdge()); },
         enableLogging: function () {
             enableLogging = true;
         },
