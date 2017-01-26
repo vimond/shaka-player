@@ -224,7 +224,7 @@ appUtils.interpretContentProtection = function(
  * @private
  */
 appUtils.licensePreProcessor_ = function(info) {
-  info.headers = { 'Content-Type': 'application/octet-stream' };
+  //info.headers = { 'Content-Type': 'application/octet-stream' };
 };
 
 /**

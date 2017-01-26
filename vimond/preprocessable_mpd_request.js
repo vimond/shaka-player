@@ -70,7 +70,7 @@ shaka.vimond.dash.PreprocessableMpdRequest.prototype.send = function() {
         this.updatedBigIntegerWorkaroundState = processedResult.state;
         var mpd = shaka.dash.mpd.parseMpd(processedResult.manifestString, url.urls, [url.currentUrl]);
         if (mpd) {
-            return Promise.resolve(this.applyPresentationTimeOffsetFix_(mpd));
+            return Promise.resolve(this.applyPresentationTimeOffsetFix_(this.processTimeline_(mpd)));
         }
 
         var error = new Error('MPD parse failure.');
@@ -78,6 +78,52 @@ shaka.vimond.dash.PreprocessableMpdRequest.prototype.send = function() {
         return Promise.reject(error);
     }.bind(this));
 };
+
+
+shaka.vimond.dash.PreprocessableMpdRequest.prototype.transformTimeline_ = function(segmentTemplate, mapFn, filterFn, mutateFn, adaptationSet, representation, mpd) {
+    if (segmentTemplate && segmentTemplate.timeline && segmentTemplate.timeline.timePoints) {
+        if (mutateFn) {
+            mutateFn(adaptationSet, representation, mpd, segmentTemplate.timeline);
+        } else {
+            var timePoints = segmentTemplate.timeline.timePoints;
+            if (mapFn) {
+                timePoints = timePoints.map(mapFn.bind(this, adaptationSet, representation, mpd));
+            }
+            if (filterFn) {
+                timePoints = timePoints.filter(mapFn.bind(this, adaptationSet, representation, mpd));
+            }
+            segmentTemplate.timeline.timePoints = timePoints;
+        }
+    }
+};
+
+/**
+ * Filters the timeline
+ * @param {shaka.dash.mpd.Mpd} mpd
+ * @param {function} filterFn 
+ * @returns {shaka.dash.mpd.Mpd}
+ */
+shaka.vimond.dash.PreprocessableMpdRequest.prototype.processTimeline_ = function(mpd) {
+    if (this.modificationSetup_) {
+        var filterFn = this.modificationSetup_.timelineFilterFn,
+            mapFn = this.modificationSetup_.timelineMapFn,
+            mutateFn = this.modificationSetup_.mutateManifestFn;
+        if (filterFn || mapFn || mutateFn) {
+            mpd.periods.forEach(function (period) {
+                period.adaptationSets.forEach(function (adaptationSet) {
+                    if (Array.isArray(adaptationSet.representations)) {
+                        adaptationSet.representations.forEach(function (representation) {
+                            this.transformTimeline_(representation.segmentTemplate, mapFn, filterFn, mutateFn, adaptationSet, representation, mpd);
+                        }.bind(this));
+                    }
+                    this.transformTimeline_(adaptationSet.segmentTemplate, mapFn, filterFn, mutateFn, adaptationSet, null, mpd);
+                }.bind(this));
+            }.bind(this));
+        }
+    }
+    return mpd;
+};
+
 
 /**
  * Applies workarounds for big numbers in offsets and time codes

@@ -22,6 +22,8 @@
  */
 var app = function() {};
 
+var sim = getFixedStartSimulator();
+app.mutateManifestFn = sim.mutateManifest;
 
 /**
  * The video element owned by the app.
@@ -164,11 +166,6 @@ app.init = function() {
 
   app.player_ =
       new shaka.player.Player(/** @type {!HTMLVideoElement} */ (app.video_));
-  
-  app.video_.addEventListener('encrypted', function(evt) {
-    "use strict";
-    console.log('***** Encrypted is fired!', evt);
-  });
   
   
   app.player_.addEventListener('error', app.onPlayerError_);
@@ -793,6 +790,7 @@ app.loadDashStream = function() {
     extendedConfig = extendedConfig || {};
     extendedConfig.manifestModifier = extendedConfig.manifestModifier || {};
     extendedConfig.manifestModifier.bigIntegersFixPolicy = 'default';
+    extendedConfig.manifestModifier.mutateManifestFn = app.mutateManifestFn;
 
     var estimator = /** @type {!shaka.util.IBandwidthEstimator} */(
         app.estimator_);

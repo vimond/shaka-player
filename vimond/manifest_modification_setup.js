@@ -11,11 +11,14 @@ goog.provide('shaka.vimond.dash.ManifestModificationSetup');
  * @param {Array<shaka.vimond.dash.ReplacementRule>=} opt_replacements
  * @param {string=} opt_presentationTimeOffsetFixPolicy
  * @param {string=} opt_bigIntegersFixPolicy
+ * @param {function=} opt_timelineFilterFn
+ * @param {function=} opt_timelineMapFn
+ * @param {function=} opt_mutateManifestFn
  * @constructor
  * @struct
  * @exportDoc
  */
-shaka.vimond.dash.ManifestModificationSetup = function(opt_replacements, opt_presentationTimeOffsetFixPolicy, opt_bigIntegersFixPolicy) {
+shaka.vimond.dash.ManifestModificationSetup = function(opt_replacements, opt_presentationTimeOffsetFixPolicy, opt_bigIntegersFixPolicy, opt_timelineFilterFn, opt_timelineMapFn, opt_mutateManifestFn) {
     'use strict';    
     /** @public */
     this.replacements = opt_replacements || null;
@@ -24,5 +27,11 @@ shaka.vimond.dash.ManifestModificationSetup = function(opt_replacements, opt_pre
 
     /** @public */ 
     this.presentationTimeOffsetFixPolicy = opt_presentationTimeOffsetFixPolicy || null;
+    /** @public */
+    this.timelineFilterFn = opt_timelineFilterFn || null;
+    /** @public */
+    this.timelineMapFn = opt_timelineMapFn || null;
+    /** @public */
+    this.mutateManifestFn = opt_mutateManifestFn || null;
 };
 goog.exportSymbol('shaka.vimond.dash.ManifestModificationSetup', shaka.vimond.dash.ManifestModificationSetup);
