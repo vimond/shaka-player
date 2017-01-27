@@ -196,6 +196,7 @@ function getFixedStartSimulator(){
     return {
         transformManifest: transformManifest,
         setFixedStartPoint: setFixedStartPoint,
+        getFixedStartPoint: function(){ return fixedStart; },
         getCurrentLiveEdge: getCurrentLiveEdge,
         setLiveEdgeAsStartPoint: function() { setFixedStartPoint(getCurrentLiveEdge()); },
         enableLogging: function () {
