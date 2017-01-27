@@ -17,9 +17,12 @@ Based on version 1.6.5 of the original repo.
 * Handle 403s or 404s as "end of live stream"
 * suggestedPresentationDelay attribute for live streams also respected in segment timeline manifests
 * Working around issues with seeking outside the range (before earliest segment start time) occurring because of JS floating point precision errors for timestamp corrections
+* Respecting updating timeShiftBufferDepth values appearing in live manifests. This is essential to supporting expanding DVR windows. Shaka only read this value on playback startup, and didn't expect it to change as DVR windows grow.
 * Demo page convenience additions
 * Make withCredentials for XHR configurable via player configuration
 * Remove a few seconds (controlled by `shaka.player.Defaults.REMOVE_BUFFER_SIZE_AT_QUOTAEXCEPTIONERROR`) of source buffer when QuotaExceededError occurred
+
+Following, the customisations needing attention from Shaka player consumers/integrators, are discussed.
 
 ### Build scripts for including customizations
 
