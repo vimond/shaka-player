@@ -1,31 +1,5 @@
 
-function getProp(obj, propertyName, shortForm) {
-    "use strict";
-    return obj[propertyName] != null ? shortForm + '=' + obj[propertyName] : '';
-}
 
-function timePointToString(tp) {
-    "use strict";
-    return '{' + [getProp(tp, 'startTime', 's'), getProp(tp, 'duration', 'd'), getProp(tp, 'repeat', 'r')].filter(function(t) {return t;}).join(',') + '}';
-}
-
-function timePointsToString(array) {
-    "use strict";
-    if (array.length > 1) {
-        return 'Start: ' + timePointToString(array[0]) + ' End: ' + timePointToString(array[array.length - 1]);
-    } else if( array.length === 1) {
-        return 'Single entry: ' + timePointToString(array[0]);
-    } else {
-        return '(Empty)';
-    }
-}
-
-function findLiveEdge(array) {
-    return array.reduce(function(accumulated, currentTimePoint) {
-        var currentOffset = currentTimePoint.startTime || accumulated;
-        return currentOffset + (currentTimePoint.duration * (1 + currentTimePoint.repeat || 0));
-    }, 0);
-}
 
 function getFixedStartSimulator(){
     "use strict";
@@ -39,6 +13,58 @@ function getFixedStartSimulator(){
     var storedFixedStart = localStorage.getItem(storageKey);
     if (storedFixedStart) {
         fixedStart = parseInt(storedFixedStart, 10);
+    }
+
+    function getProp(obj, propertyName, shortForm) {
+        return obj[propertyName] != null ? shortForm + '=' + obj[propertyName] : '';
+    }
+
+    function timePointToString(tp) {
+        return '{' + [getProp(tp, 'startTime', 's'), getProp(tp, 'duration', 'd'), getProp(tp, 'repeat', 'r')].filter(function(t) {return t;}).join(',') + '}';
+    }
+
+    function timePointsToString(array) {
+        if (array.length > 1) {
+            return 'Start: ' + timePointToString(array[0]) + ' End: ' + timePointToString(array[array.length - 1]);
+        } else if( array.length === 1) {
+            return 'Single entry: ' + timePointToString(array[0]);
+        } else {
+            return '(Empty)';
+        }
+    }
+    
+    function findLiveEdge(array) {
+        return array.reduce(function(accumulated, currentTimePoint) {
+            var currentOffset = currentTimePoint.startTime || accumulated;
+            return currentOffset + (currentTimePoint.duration * (1 + currentTimePoint.repeat || 0));
+        }, 0);
+    }
+
+    function formatIsoDurationFromSeconds(seconds) {
+        seconds = isNaN(seconds) ? 0 : Math.round(seconds);
+
+        var hours = ((seconds >= 3600) ? Math.floor(seconds  / 3600) + 'H' : '');
+        var minutes = (hours && seconds % 3600 < 600 ? '0' : '') + Math.floor(seconds % 3600 / 60) + 'M';
+        var remainingSeconds = seconds % 60 + 'S';
+        return hours + minutes + remainingSeconds;
+        
+    }
+    
+    function getDurationFromTimeline(segmentTemplate) {
+        var timePoints = segmentTemplate.timeline.timePoints;
+        var timescale = segmentTemplate.timescale;
+        var startTime = timePoints[0] ? (timePoints[0].startTime || 0) : 0;
+        if (timePoints.length > 1) {
+            //debugger;
+        }
+        return timePoints.reduce(function(accumulated, currentTimePoint, index, arr) {
+            if (currentTimePoint.startTime && (currentTimePoint.startTime !== startTime + accumulated)) {
+                console.warn('There is a gap in the segment timeline at index %s!', index, startTime, accumulated + startTime, currentTimePoint.startTime + accumulated - startTime);
+                console.warn('Time points:', timePointToString(arr[0]), timePointToString(arr[1]), timePointToString(arr[2]));
+            }
+            var currentDuration = currentTimePoint.duration * ((currentTimePoint.repeat || 0) + 1);
+            return currentDuration + accumulated;
+        }, 0) / timescale;
     }
 
     function removeTimePointsBeforeFixedStart(segmentTemplate) {
@@ -128,14 +154,31 @@ function getFixedStartSimulator(){
     
     function transformManifest(mpd) {
         var segmentTemplateContainers = getSegmentTemplateContainers(mpd);
+        var durations = [];
+        var shouldUpdateTimeShiftBufferDepth = false;
         segmentTemplateContainers.forEach(function(stc, index) {
             if (index === 0) {
                 currentLiveEdge = findLiveEdge(stc.segmentTemplate.timeline.timePoints);
             }
+            var previousTimePointCount = stc.segmentTemplate.timeline.timePoints.length;
             var newSegmentTemplate = removeTimePointsBeforeFixedStart(stc.segmentTemplate);
             // The cheap and dirty way: Mutating the MPD object.
             stc.segmentTemplate = newSegmentTemplate;
+            if (newSegmentTemplate.timeline.timePoints.length !== previousTimePointCount) {
+                
+                shouldUpdateTimeShiftBufferDepth = true;
+            }
+            durations.push(getDurationFromTimeline(newSegmentTemplate));
+            
         });
+        if (shouldUpdateTimeShiftBufferDepth) {
+            // Don't mess with the timeShiftBufferDepth if there are no changes.
+            var maxDuration = Math.max.apply(null, durations);
+            var oldTimeShiftBufferDepth = mpd.timeShiftBufferDepth;
+            mpd.timeShiftBufferDepth = maxDuration;
+            console.log('Changing MPD timeShiftBufferDepth from %s to %s, based on max duration found in timelines.', formatIsoDurationFromSeconds(oldTimeShiftBufferDepth), formatIsoDurationFromSeconds(mpd.timeShiftBufferDepth), durations);
+        }
+
         return mpd;
         //if (enableLogging) {
         //    console.log('Timeline for %s', adaptationSet.contentType, timePointsToString(timeline.timePoints));
