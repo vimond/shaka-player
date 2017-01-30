@@ -24,9 +24,21 @@ var shakaDemo = shakaDemo || {};
 shakaDemo.offlineOptGroup_ = null;
 
 
-/** @private */
-shakaDemo.updateButtons_ = function() {
+/** @private {boolean} */
+shakaDemo.offlineOperationInProgress_ = false;
+
+
+/**
+ * @param {boolean} canHide True to hide the progress value if there isn't an
+ *   operation going.
+ * @private
+ */
+shakaDemo.updateButtons_ = function(canHide) {
   var assetList = document.getElementById('assetList');
+  var inProgress = shakaDemo.offlineOperationInProgress_;
+
+  document.getElementById('progressDiv').style.display =
+      canHide && !inProgress ? 'none' : 'block';
 
   var option = assetList.options[assetList.selectedIndex];
   var storedContent = option.storedContent;
@@ -38,27 +50,31 @@ shakaDemo.updateButtons_ = function() {
             shakaDemo.support_.drm[drm].persistentState;
       });
 
-  var storeBtn = document.getElementById('storeOffline');
-  storeBtn.disabled = (!supportsDrm || storedContent != null);
-  storeBtn.title = !supportsDrm ?
-      'This browser does not support persistent licenses' :
-      (storeBtn.disabled ? 'Selected asset is already stored offline' : '');
-  var deleteBtn = document.getElementById('deleteOffline');
-  deleteBtn.disabled = (storedContent == null);
-  deleteBtn.title =
-      deleteBtn.disabled ? 'Selected asset is not stored offline' : '';
+  // Only show when the custom asset option is selected.
+  document.getElementById('offlineNameDiv').style.display =
+      option.asset ? 'none' : 'block';
+
+  var button = document.getElementById('storeDelete');
+  button.disabled = (inProgress || !supportsDrm || option.isStored);
+  button.innerText = storedContent ? 'Delete' : 'Store';
+  if (inProgress)
+    button.title = 'There is already an operation in progress';
+  else if (!supportsDrm)
+    button.title = 'This browser does not support persistent licenses';
+  else if (button.disabled)
+    button.title = 'Selected asset is already stored offline';
+  else
+    button.title = '';
 };
 
 
 /** @private */
 shakaDemo.setupOffline_ = function() {
-  document.getElementById('storeOffline')
-      .addEventListener('click', shakaDemo.storeAsset_);
-  document.getElementById('deleteOffline')
-      .addEventListener('click', shakaDemo.deleteAsset_);
+  document.getElementById('storeDelete')
+      .addEventListener('click', shakaDemo.storeDeleteAsset_);
   document.getElementById('assetList')
-      .addEventListener('change', shakaDemo.updateButtons_);
-  shakaDemo.updateButtons_();
+      .addEventListener('change', shakaDemo.updateButtons_.bind(null, true));
+  shakaDemo.updateButtons_(true);
 };
 
 
@@ -76,8 +92,8 @@ shakaDemo.setupOfflineAssets_ = function() {
 
   /** @type {!HTMLOptGroupElement} */
   var group;
+  var assetList = document.getElementById('assetList');
   if (!shakaDemo.offlineOptGroup_) {
-    var assetList = document.getElementById('assetList');
     group =
         /** @type {!HTMLOptGroupElement} */ (
             document.createElement('optgroup'));
@@ -88,9 +104,17 @@ shakaDemo.setupOfflineAssets_ = function() {
     group = shakaDemo.offlineOptGroup_;
   }
 
-  var db = new Storage(shakaDemo.player_);
+  var db = new Storage(shakaDemo.localPlayer_);
   return db.list().then(function(storedContents) {
     storedContents.forEach(function(storedContent) {
+      for (var i = 0; i < assetList.options.length; i++) {
+        var option = assetList.options[i];
+        if (option.asset &&
+            option.asset.manifestUri == storedContent.originalManifestUri) {
+          option.isStored = true;
+          break;
+        }
+      }
       var asset = {manifestUri: storedContent.offlineUri};
 
       var option = document.createElement('option');
@@ -101,75 +125,60 @@ shakaDemo.setupOfflineAssets_ = function() {
       group.appendChild(option);
     });
 
+    shakaDemo.updateButtons_(true);
     return db.destroy();
   });
 };
 
 
 /** @private */
-shakaDemo.storeAsset_ = function() {
+shakaDemo.storeDeleteAsset_ = function() {
   shakaDemo.closeError();
+  shakaDemo.offlineOperationInProgress_ = true;
+  shakaDemo.updateButtons_(false);
 
   var assetList = document.getElementById('assetList');
   var progress = document.getElementById('progress');
-  var storeBtn = document.getElementById('storeOffline');
-  var deleteBtn = document.getElementById('deleteOffline');
   var option = assetList.options[assetList.selectedIndex];
-
-  var asset = shakaDemo.preparePlayer_(option.asset);
 
   progress.textContent = '0';
-  storeBtn.disabled = true;
-  deleteBtn.disabled = true;
-
-  var metadata = {name: asset.name || asset.manifestUri};
-  var storage = new shaka.offline.Storage(shakaDemo.player_);
-  storage.configure(/** @type {shakaExtern.OfflineConfiguration} */ ({
-    progressCallback: function(data, percent) {
-      var progress = document.getElementById('progress');
-      progress.textContent = (percent * 100).toFixed(2);
-    }
-  }));
-
-  storage.store(asset.manifestUri, metadata).then(function() {
-    shakaDemo.refreshAssetList_();
-  }, function(reason) {
-    var error = /** @type {!shaka.util.Error} */(reason);
-    shakaDemo.onError_(error);
-  }).then(function() {
-    shakaDemo.updateButtons_();
-    return storage.destroy();
-  });
-};
-
-
-/** @private */
-shakaDemo.deleteAsset_ = function() {
-  shakaDemo.closeError();
-
-  var assetList = document.getElementById('assetList');
-  var storeBtn = document.getElementById('storeOffline');
-  var deleteBtn = document.getElementById('deleteOffline');
-  var option = assetList.options[assetList.selectedIndex];
-
-  storeBtn.disabled = true;
-  deleteBtn.disabled = true;
 
   var storage = new shaka.offline.Storage(shakaDemo.player_);
   storage.configure(/** @type {shakaExtern.OfflineConfiguration} */ ({
     progressCallback: function(data, percent) {
-      var progress = document.getElementById('progress');
       progress.textContent = (percent * 100).toFixed(2);
     }
   }));
 
-  storage.remove(option.storedContent).then(function() {
-    shakaDemo.refreshAssetList_();
-  }, function(reason) {
+  var p;
+  if (option.storedContent) {
+    var originalManifestUri = option.storedContent.originalManifestUri;
+    p = storage.remove(option.storedContent).then(function() {
+      for (var i = 0; i < assetList.options.length; i++) {
+        var option = assetList.options[i];
+        if (option.asset && option.asset.manifestUri == originalManifestUri)
+          option.isStored = false;
+      }
+      shakaDemo.refreshAssetList_();
+    });
+  } else {
+    var asset = shakaDemo.preparePlayer_(option.asset);
+    var nameField = document.getElementById('offlineName').value;
+    var assetName = asset.name ? asset.name + ' (offline)' : null;
+    var metadata = {name: assetName || nameField || asset.manifestUri};
+    p = storage.store(asset.manifestUri, metadata).then(function() {
+      shakaDemo.refreshAssetList_();
+      if (option.asset)
+        option.isStored = true;
+    });
+  }
+
+  p.catch(function(reason) {
     var error = /** @type {!shaka.util.Error} */(reason);
     shakaDemo.onError_(error);
   }).then(function() {
-    shakaDemo.updateButtons_();
+    shakaDemo.offlineOperationInProgress_ = false;
+    shakaDemo.updateButtons_(false);
     return storage.destroy();
   });
 };
@@ -184,4 +193,23 @@ shakaDemo.refreshAssetList_ = function() {
   }
 
   shakaDemo.setupOfflineAssets_();
+};
+
+
+/**
+ * @param {boolean} connected
+ * @private
+ */
+shakaDemo.onCastStatusChange_ = function(connected) {
+  // When we are casting, offline assets become unavailable.
+  shakaDemo.offlineOptGroup_.disabled = connected;
+
+  if (connected) {
+    var assetList = document.getElementById('assetList');
+    var option = assetList.options[assetList.selectedIndex];
+    if (option.storedContent) {
+      // This is an offline asset.  Select something else.
+      assetList.selectedIndex = 0;
+    }
+  }
 };

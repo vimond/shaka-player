@@ -1,3 +1,20 @@
+/**
+ * @license
+ * Copyright 2016 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // Karma configuration
 // Install required modules by running "npm install"
 
@@ -30,31 +47,30 @@ module.exports = function(config) {
       // requirejs next
       'node_modules/requirejs/require.js',
 
+      // bootstrapping for the test suite
+      'test/test/boot.js',
+
       // test utils next
-      'test/util/*.js',
+      'test/test/util/*.js',
 
       // list of test assets next
       'demo/assets.js',
 
-      // support test before other tests
-      'test/support_check.js',
-
       // unit tests last
-      'test/*_unit.js',
+      'test/**/*_unit.js',
 
       // if --quick is not present, we will add integration tests.
 
       // source files - these are only watched and served
       {pattern: 'lib/**/*.js', included: false},
       {pattern: 'third_party/closure/goog/**/*.js', included: false},
-      {pattern: 'test/assets/*', included: false},
+      {pattern: 'test/test/assets/*', included: false},
       {pattern: 'dist/shaka-player.compiled.js', included: false},
     ],
 
-    proxies: {
-      '/test/assets/': '/base/test/assets/',
-      '/dist/': '/base/dist/',
-    },
+    // NOTE: Do not use proxies at all!  They cannot be used with the --hostname
+    // option, which is necessary for some of our lab testing.
+    proxies: {},
 
     preprocessors: {
       // Don't compute coverage over lib/debug/ or lib/polyfill/
@@ -63,10 +79,12 @@ module.exports = function(config) {
       'lib/player.js': 'coverage',
     },
 
-    // do not panic about "no activity" unless a test takes longer than 120s.
-    // this value must be greater than any jasmine.DEFAULT_TIMEOUT_INTERVAL used
-    // in test cases. (eg. 90s in test/streaming_engine_integration.js)
-    browserNoActivityTimeout: 120000,
+    // to avoid DISCONNECTED messages on Safari:
+    browserDisconnectTimeout: 10 * 1000,  // 10s to reconnect
+    browserDisconnectTolerance: 1,  // max of 1 disconnect is OK
+    browserNoActivityTimeout: 5 * 60 * 1000,  // disconnect after 5m silence
+    captureTimeout: 1 * 60 * 1000,  // give up if startup takes 1m
+    // https://support.saucelabs.com/customer/en/portal/articles/2440724
 
     client: {
       // don't capture the client's console logs
@@ -93,86 +111,8 @@ module.exports = function(config) {
     // do a single run of the tests on captured browsers and then quit
     singleRun: true,
 
-    customLaunchers: {
-      // These entries are specific to Shaka team's internal test lab:
-
-      // OS X El Capitan {{{
-      WebDriver_Safari9: {
-        base: 'WebDriver',
-        config: {hostname: 'localhost', port: 4445},
-        browserName: 'safari',
-        pseudoActivityInterval: 20000
-      },
-
-      WebDriver_ChromeMac: {
-        base: 'WebDriver',
-        config: {hostname: 'localhost', port: 4445},
-        browserName: 'chrome',
-        pseudoActivityInterval: 20000
-      },
-      // }}}
-
-      // OS X Yosemite {{{
-      WebDriver_Safari8: {
-        base: 'WebDriver',
-        config: {hostname: 'localhost', port: 4444},
-        browserName: 'safari',
-        pseudoActivityInterval: 20000
-      },
-
-      WebDriver_FirefoxMac: {
-        base: 'WebDriver',
-        config: {hostname: 'localhost', port: 4444},
-        browserName: 'firefox',
-        pseudoActivityInterval: 20000
-      },
-
-      WebDriver_OperaMac: {
-        base: 'WebDriver',
-        config: {hostname: 'localhost', port: 4444},
-        // This is not obvious, but as of 2016-03-17, operadriver responds to
-        // browserName 'chrome', not 'opera'.  It still launches opera.  This
-        // should be solveable once operachromiumdriver releases sources.
-        // See:
-        //   https://github.com/operasoftware/operachromiumdriver/issues/8
-        //   http://stackoverflow.com/a/27387949
-        browserName: 'chrome',
-        pseudoActivityInterval: 20000
-      },
-      // }}}
-
-      // Windows {{{
-      WebDriver_IE11: {
-        base: 'WebDriver',
-        config: {hostname: 'localhost', port: 4446},
-        browserName: 'internet explorer',
-        pseudoActivityInterval: 20000
-      },
-
-      WebDriver_Edge: {
-        base: 'WebDriver',
-        config: {hostname: 'localhost', port: 4446},
-        browserName: 'MicrosoftEdge',
-        pseudoActivityInterval: 20000
-      },
-
-      WebDriver_ChromeWin: {
-        base: 'WebDriver',
-        config: {hostname: 'localhost', port: 4446},
-        browserName: 'chrome',
-        pseudoActivityInterval: 20000
-      },
-
-      WebDriver_FirefoxWin: {
-        base: 'WebDriver',
-        config: {hostname: 'localhost', port: 4446},
-        browserName: 'firefox',
-        pseudoActivityInterval: 20000
-      },
-      // }}}
-    },
-
     coverageReporter: {
+      includeAllSources: true,
       reporters: [
         { type: 'text' },
       ],
@@ -193,6 +133,7 @@ module.exports = function(config) {
       coverageReporter: {
         reporters: [
           { type: 'html', dir: 'coverage' },
+          { type: 'cobertura', dir: 'coverage', file: 'coverage.xml' },
         ],
       },
     });
@@ -201,7 +142,7 @@ module.exports = function(config) {
   if (!flagPresent('quick')) {
     // If --quick is present, we don't serve integration tests.
     var files = config.files;
-    files.push('test/*_integration.js');
+    files.push('test/**/*_integration.js');
     // We just modified the config in-place.  No need for config.set().
   }
 
@@ -225,9 +166,37 @@ module.exports = function(config) {
     setClientArg(config, 'external', true);
   }
 
+  if (flagPresent('quarantined')) {
+    // Run quarantined tests which do not consistently pass.
+    // Skipped by default.
+    setClientArg(config, 'quarantined', true);
+  }
+
   if (flagPresent('uncompiled')) {
     // Run Player integration tests with uncompiled code for debugging.
     setClientArg(config, 'uncompiled', true);
+  }
+
+  if (flagPresent('random')) {
+    // Run tests in a random order.
+    setClientArg(config, 'random', true);
+
+    // If --seed was specified use that value, else generate a seed so that the
+    // exact order can be reproduced if it catches an issue.
+    var seed = getFlagValue('seed') || new Date().getTime();
+    setClientArg(config, 'seed', seed);
+
+    console.log("Using a random test order (--random) with --seed=" + seed);
+  }
+
+  if (flagPresent('specFilter')) {
+    setClientArg(config, 'specFilter', getFlagValue('specFilter'));
+  }
+
+  var hostname = getFlagValue('hostname');
+  if (hostname !== null) {
+    // Point the browsers to a hostname other than localhost.
+    config.set({hostname: hostname});
   }
 };
 

@@ -1,7 +1,7 @@
 {
   "name": "shaka-player",
   "description": "DASH/EME video player library",
-  "version": "2.0.0-beta2",
+  "version": "2.0.0",
   "homepage": "https://github.com/google/shaka-player",
   "author": "Google",
   "maintainers": [
@@ -11,24 +11,25 @@
     }
   ],
   "devDependencies": {
-    "htmlhint": "0.9.12",
+    "htmlhint": "yaniswang/HTMLHint#152a114f",
     "in-publish": "2.x",
-    "jasmine-ajax": "3.2.x",
+    "jasmine-ajax": "3.3.x",
     "jasmine-core": "2.4.x",
-    "karma": "~0.13.19",
-    "karma-chrome-launcher": "~0.2.2",
-    "karma-coverage": "~0.5.3",
-    "karma-firefox-launcher": "~0.1.7",
-    "karma-ie-launcher": "~0.2.0",
-    "karma-jasmine": "~0.3.7",
+    "karma": "~1.1.2",
+    "karma-chrome-launcher": "~1.0.1",
+    "karma-coverage": "~1.1.1",
+    "karma-firefox-launcher": "~1.0.0",
+    "karma-ie-launcher": "~1.0.0",
+    "karma-jasmine": "~1.0.2",
     "karma-jasmine-ajax": "~0.1.13",
-    "karma-opera-launcher": "~0.3.0",
-    "karma-safari-launcher": "~0.1.1",
-    "karma-spec-reporter": "~0.0.24",
+    "karma-opera-launcher": "~1.0.0",
+    "karma-safari-launcher": "~1.0.0",
+    "karma-spec-reporter": "~0.0.26",
     "karma-webdriver-launcher": "~1.0.4",
     "requirejs": "2.x",
     "rimraf": "2.x",
-    "sprintf-js": "1.x"
+    "sprintf-js": "1.x",
+    "useragent": "^2.1.11"
   },
   "main": "dist/shaka-player.compiled.js",
   "repository": {
@@ -40,6 +41,6 @@
   },
   "license": "Apache-2.0",
   "scripts": {
-    "prepublish": "in-publish && python ./build/checkversion.py && python ./build/all.py || not-in-publish"
+    "prepublish": "in-publish && python ./build/checkversion.py && python ./build/all.py && python ./build/build.py --debug || not-in-publish"
   }
 }

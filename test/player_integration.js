@@ -33,8 +33,8 @@ describe('Player', function() {
 
   beforeAll(function(done) {
     video = /** @type {!HTMLVideoElement} */ (document.createElement('video'));
-    video.width = '600';
-    video.height = '400';
+    video.width = 600;
+    video.height = 400;
     video.muted = true;
     document.body.appendChild(video);
 
@@ -44,20 +44,28 @@ describe('Player', function() {
     Feature = window.shakaAssets.Feature;
 
     var loaded = window.shaka.util.PublicPromise();
-    if (window.shaka.test.Util.getClientArg('uncompiled')) {
+    if (getClientArg('uncompiled')) {
       // For debugging purposes, use the uncompiled library.
       shaka = window.shaka;
       loaded.resolve();
     } else {
       // Load the compiled library as a module.
       // All tests in this suite will use the compiled library.
-      require(['../dist/shaka-player.compiled.js'], function(shakaModule) {
+      require(['/base/dist/shaka-player.compiled.js'], function(shakaModule) {
         shaka = shakaModule;
+        shaka.net.NetworkingEngine.registerScheme(
+            'test', window.shaka.test.TestScheme);
+        shaka.media.ManifestParser.registerParserByMime(
+            'application/x-test-manifest',
+            window.shaka.test.TestScheme.ManifestParser);
+
         loaded.resolve();
       });
     }
 
     loaded.then(function() {
+      return window.shaka.test.TestScheme.createManifests(shaka, '_compiled');
+    }).then(function() {
       return shaka.Player.probeSupport();
     }).then(function(supportResults) {
       support = supportResults;
@@ -91,10 +99,7 @@ describe('Player', function() {
     it('gives stats about current stream', function(done) {
       // This is tested more in player_unit.js.  This is here to test the public
       // API and to check for renaming.
-      var asset =
-          '//storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd';
-
-      player.load(asset).then(function() {
+      player.load('test:sintel_compiled').then(function() {
         video.play();
         return waitForEvent(video, 'timeupdate', 10);
       }).then(function() {
@@ -107,6 +112,8 @@ describe('Player', function() {
           decodedFrames: jasmine.any(Number),
           droppedFrames: jasmine.any(Number),
           estimatedBandwidth: jasmine.any(Number),
+
+          loadLatency: jasmine.any(Number),
           playTime: jasmine.any(Number),
           bufferingTime: jasmine.any(Number),
 
@@ -117,6 +124,12 @@ describe('Player', function() {
             id: jasmine.any(Number),
             type: 'video',
             fromAdaptation: true
+          }]),
+
+          stateHistory: jasmine.arrayContaining([{
+            state: 'playing',
+            timestamp: jasmine.any(Number),
+            duration: jasmine.any(Number)
           }])
         };
         expect(stats).toEqual(expected);
@@ -129,11 +142,8 @@ describe('Player', function() {
     // to a crash in TextEngine.  This validates that we do not trigger this
     // behavior when changing visibility of text.
     it('does not cause cues to be null', function(done) {
-      var asset =
-          '//storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd';
       var textTrack = video.textTracks[0];
-
-      player.load(asset).then(function() {
+      player.load('test:sintel_compiled').then(function() {
         video.play();
         return waitForEvent(video, 'timeupdate', 10);
       }).then(function() {
@@ -160,7 +170,7 @@ describe('Player', function() {
 
       var wit = asset.focus ? fit : it;
       wit(testName, function(done) {
-        if (!window.shaka.test.Util.getClientArg('external')) {
+        if (!getClientArg('external')) {
           pending('Skipping tests that use external assets.');
         }
 
@@ -191,18 +201,20 @@ describe('Player', function() {
           config.manifest.dash.customScheme = asset.drmCallback;
         if (asset.clearKeys)
           config.drm.clearKeys = asset.clearKeys;
-        player.configure(/** @type {shakaExtern.PlayerConfiguration} */(
-            config));
+        player.configure(config);
 
         if (asset.licenseRequestHeaders) {
           player.getNetworkingEngine().registerRequestFilter(
               addLicenseRequestHeaders.bind(null, asset.licenseRequestHeaders));
         }
 
-        if (asset.licenseProcessor) {
-          player.getNetworkingEngine().registerResponseFilter(
-              asset.licenseProcessor);
-        }
+        var networkingEngine = player.getNetworkingEngine();
+        if (asset.requestFilter)
+          networkingEngine.registerRequestFilter(asset.requestFilter);
+        if (asset.responseFilter)
+          networkingEngine.registerResponseFilter(asset.responseFilter);
+        if (asset.extraConfig)
+          player.configure(asset.extraConfig);
 
         player.load(asset.manifestUri).then(function() {
           expect(player.isLive()).toEqual(isLive);
@@ -213,7 +225,7 @@ describe('Player', function() {
           return waitForTimeOrEnd(video, 30);
         }).then(function() {
           if (video.ended) {
-            expect(video.currentTime).toBeCloseTo(video.duration, 0.1);
+            expect(video.currentTime).toBeCloseTo(video.duration, 1);
           } else {
             expect(video.currentTime).toBeGreaterThan(20);
             // If it were very close to duration, why !video.ended?
@@ -225,12 +237,12 @@ describe('Player', function() {
               // 30 seconds or video ended, whichever comes first.
               return waitForTimeOrEnd(video, 30).then(function() {
                 expect(video.ended).toBe(true);
-                expect(video.currentTime).toBeCloseTo(video.duration, 0.1);
+                expect(video.currentTime).toBeCloseTo(video.duration, 1);
               });
             }
           }
         }).catch(fail).then(done);
-      }, 90000 /* ms timeout */);
+      });
     });
   });
 

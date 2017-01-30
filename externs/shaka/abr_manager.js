@@ -21,7 +21,16 @@
 
 
 /**
- * An object which selects Streams for adaptive bit-rate presentations.
+ * An object which selects Streams from a set of possible choices.  This also
+ * watches for system changes to automatically adapt for the current streaming
+ * requirements.  For example, when the network slows down, this class is in
+ * charge of telling the Player which streams to switch to in order to reduce
+ * the required bandwidth.
+ *
+ * This class is given a set of streams to choose from when the Player starts
+ * up.  This class should store these and use them to make future decisions
+ * about ABR.  It is up to this class how those decisions are made.  All the
+ * Player will do is tell this class what streams to choose from.
  *
  * @interface
  * @exportDoc
@@ -30,24 +39,67 @@ shakaExtern.AbrManager = function() {};
 
 
 /**
+ * A callback from the Player that should be called when the AbrManager decides
+ * it's time to change to a different set of streams.
+ *
+ * The first argument is a map of content types to chosen streams.
+ *
+ * The second argument is an optional boolean.  If true, all data will be
+ * from the buffer, which will result in a buffering event.
+ *
+ * @typedef {function(!Object.<string, !shakaExtern.Stream>, boolean=)}
+ * @exportDoc
+ */
+shakaExtern.AbrManager.SwitchCallback;
+
+
+/**
  * Initializes the AbrManager.
  *
- * @param {function(!Object.<string, !shakaExtern.Stream>)} switchCallback
- *     A callback which implementations call to switch streams.
+ * @param {shakaExtern.AbrManager.SwitchCallback} switchCallback
  * @exportDoc
  */
 shakaExtern.AbrManager.prototype.init = function(switchCallback) {};
 
 
 /**
- * Chooses one Stream from each StreamSet to switch to. All StreamSets must be
- * from the same Period.
+ * Stops any background timers and frees any objects held by this instance.
+ * This will only be called after a call to init.
  *
- * @param {!Object.<string, !shakaExtern.StreamSet>} streamSetsByType
+ * @exportDoc
+ */
+shakaExtern.AbrManager.prototype.stop = function() {};
+
+
+/**
+ * Updates manager's variants collection.
+ *
+ * @param {!Array.<!shakaExtern.Variant>} variants
+ * @exportDoc
+ */
+shakaExtern.AbrManager.prototype.setVariants = function(variants) {};
+
+
+/**
+ * Updates manager's text streams collection.
+ *
+ * @param {!Array.<!shakaExtern.Stream>} streams
+ * @exportDoc
+ */
+shakaExtern.AbrManager.prototype.setTextStreams = function(streams) {};
+
+
+/**
+ * Chooses one Stream from each media type in mediaTypesToUpdate to switch to.
+ * All Variants and Streams must be from the same Period.
+ *
+ * @param {!Array.<!string>} mediaTypesToUpdate
  * @return {!Object.<string, shakaExtern.Stream>}
  * @exportDoc
  */
-shakaExtern.AbrManager.prototype.chooseStreams = function(streamSetsByType) {};
+// TODO: Consider breaking down into chooseVariant() and chooseText()
+shakaExtern.AbrManager.prototype.chooseStreams =
+    function(mediaTypesToUpdate) {};
 
 
 /**
@@ -73,24 +125,13 @@ shakaExtern.AbrManager.prototype.disable = function() {};
  * Notifies the AbrManager that a segment has been downloaded (includes MP4
  * SIDX data, WebM Cues data, initialization segments, and media segments).
  *
- * @param {number} startTimeMs The wall-clock time, in milliseconds, when the
- *     request began (before any outbound request filters).
- * @param {number} endTimeMs The wall-clock time, in milliseconds, when the
- *     response ended (after all retries and inbound response filters).
+ * @param {number} deltaTimeMs The duration, in milliseconds, that the request
+ *     took to complete.
  * @param {number} numBytes The total number of bytes transferred.
  * @exportDoc
  */
 shakaExtern.AbrManager.prototype.segmentDownloaded = function(
-    startTimeMs, endTimeMs, numBytes) {};
-
-
-/**
- * Stops any background timers and frees any objects held by this instance.
- * This will only be called after a call to init.
- *
- * @exportDoc
- */
-shakaExtern.AbrManager.prototype.stop = function() {};
+    deltaTimeMs, numBytes) {};
 
 
 /**
@@ -111,3 +152,11 @@ shakaExtern.AbrManager.prototype.getBandwidthEstimate = function() {};
  */
 shakaExtern.AbrManager.prototype.setDefaultEstimate = function(estimate) {};
 
+
+/**
+ * Sets the restrictions that AbrManager will use when choosing streams.
+ *
+ * @param {shakaExtern.Restrictions} restrictions
+ * @exportDoc
+ */
+shakaExtern.AbrManager.prototype.setRestrictions = function(restrictions) {};
