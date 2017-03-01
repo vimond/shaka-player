@@ -526,9 +526,9 @@ describe('DrmEngine', function() {
       var initData2 = new Uint8Array(0);
       var initData3 = new Uint8Array(10);
       manifest.periods[0].variants[0].drmInfos[0].initData = [
-        { initData: initData1, initDataType: 'cenc' },
-        { initData: initData2, initDataType: 'webm' },
-        { initData: initData3, initDataType: 'cenc' }
+        { initData: initData1, initDataType: 'cenc', keyId: null },
+        { initData: initData2, initDataType: 'webm', keyId: null },
+        { initData: initData3, initDataType: 'cenc', keyId: null }
       ];
 
       initAndAttach().then(function() {
@@ -539,6 +539,29 @@ describe('DrmEngine', function() {
             toHaveBeenCalledWith('webm', initData2.buffer);
         expect(session3.generateRequest).
             toHaveBeenCalledWith('cenc', initData3.buffer);
+      }).catch(fail).then(done);
+    });
+
+    it('ignores duplicate init data overrides', function(done) {
+      // Set up init data overrides in the manifest;
+      // The second initData has a different keyId from the first,
+      // but the same initData.
+      // The third initData has a different initData from the first,
+      // but the same keyId.
+      // Both should be discarded as duplicates.
+      var initData1 = new Uint8Array(1);
+      var initData2 = new Uint8Array(1);
+      var initData3 = new Uint8Array(10);
+      manifest.periods[0].variants[0].drmInfos[0].initData = [
+        { initData: initData1, initDataType: 'cenc', keyId: 'abc'},
+        { initData: initData2, initDataType: 'cenc', keyId: 'def'},
+        { initData: initData3, initDataType: 'cenc', keyId: 'abc'}
+      ];
+
+      initAndAttach().then(function() {
+        expect(mockMediaKeys.createSession.calls.count()).toBe(1);
+        expect(session1.generateRequest).
+            toHaveBeenCalledWith('cenc', initData1.buffer);
       }).catch(fail).then(done);
     });
 
@@ -620,7 +643,7 @@ describe('DrmEngine', function() {
       // to generateRequest:
       var initData1 = new Uint8Array(5);
       manifest.periods[0].variants[0].drmInfos[0].initData = [
-        { initData: initData1, initDataType: 'cenc' }
+        { initData: initData1, initDataType: 'cenc', keyId: null }
       ];
 
       // Fail generateRequest.
@@ -657,9 +680,9 @@ describe('DrmEngine', function() {
           var initData2 = new Uint8Array(2);
 
           mockVideo.on['encrypted'](
-              { initDataType: 'webm', initData: initData1 });
+              { initDataType: 'webm', initData: initData1, keyId: null });
           mockVideo.on['encrypted'](
-              { initDataType: 'cenc', initData: initData2 });
+              { initDataType: 'cenc', initData: initData2, keyId: null });
 
           expect(mockMediaKeys.createSession.calls.count()).toBe(2);
           expect(session1.generateRequest).
@@ -675,9 +698,9 @@ describe('DrmEngine', function() {
           var initData2 = new Uint8Array(1);  // identical to initData1
 
           mockVideo.on['encrypted'](
-              { initDataType: 'webm', initData: initData1 });
+              { initDataType: 'webm', initData: initData1, keyId: null });
           mockVideo.on['encrypted'](
-              { initDataType: 'cenc', initData: initData2 });
+              { initDataType: 'cenc', initData: initData2, keyId: null });
 
           expect(mockMediaKeys.createSession.calls.count()).toBe(1);
           expect(session1.generateRequest).
@@ -688,7 +711,7 @@ describe('DrmEngine', function() {
       it('is ignored when init data is in DrmInfo', function(done) {
         // Set up an init data override in the manifest:
         manifest.periods[0].variants[0].drmInfos[0].initData = [
-          { initData: new Uint8Array(0), initDataType: 'cenc' }
+          { initData: new Uint8Array(0), initDataType: 'cenc', keyId: null }
         ];
 
         initAndAttach().then(function() {
@@ -706,7 +729,7 @@ describe('DrmEngine', function() {
         initAndAttach().then(function() {
           var initData1 = new Uint8Array(1);
           mockVideo.on['encrypted'](
-              { initDataType: 'webm', initData: initData1 });
+              { initDataType: 'webm', initData: initData1, keyId: null });
 
           expect(onErrorSpy).toHaveBeenCalled();
           var error = onErrorSpy.calls.argsFor(0)[0];
@@ -725,7 +748,7 @@ describe('DrmEngine', function() {
         initAndAttach().then(function() {
           var initData1 = new Uint8Array(1);
           mockVideo.on['encrypted'](
-              { initDataType: 'webm', initData: initData1 });
+              { initDataType: 'webm', initData: initData1, keyId: null });
 
           expect(onErrorSpy).toHaveBeenCalled();
           var error = onErrorSpy.calls.argsFor(0)[0];
@@ -741,7 +764,7 @@ describe('DrmEngine', function() {
         initAndAttach().then(function() {
           var initData = new Uint8Array(0);
           mockVideo.on['encrypted'](
-              { initDataType: 'webm', initData: initData });
+              { initDataType: 'webm', initData: initData, keyId: null });
 
           expect(session1.addEventListener).toHaveBeenCalledWith(
               'message', jasmine.any(Function), false);
@@ -752,7 +775,7 @@ describe('DrmEngine', function() {
         initAndAttach().then(function() {
           var initData = new Uint8Array(0);
           mockVideo.on['encrypted'](
-              { initDataType: 'webm', initData: initData });
+              { initDataType: 'webm', initData: initData, keyId: null });
 
           fakeNetEngine.request.and.returnValue(new shaka.util.PublicPromise());
           var message = new Uint8Array(0);
@@ -775,7 +798,7 @@ describe('DrmEngine', function() {
         initAndAttach().then(function() {
           var initData = new Uint8Array(0);
           mockVideo.on['encrypted'](
-              { initDataType: 'webm', initData: initData });
+              { initDataType: 'webm', initData: initData, keyId: null });
 
           fakeNetEngine.request.and.returnValue(new shaka.util.PublicPromise());
           var message = new Uint8Array(0);
@@ -793,7 +816,7 @@ describe('DrmEngine', function() {
         initAndAttach().then(function() {
           var initData = new Uint8Array(0);
           mockVideo.on['encrypted'](
-              { initDataType: 'webm', initData: initData });
+              { initDataType: 'webm', initData: initData, keyId: null });
 
           // Simulate a permission error from the web server.
           var netError = new shaka.util.Error(
@@ -825,7 +848,7 @@ describe('DrmEngine', function() {
         initAndAttach().then(function() {
           var initData = new Uint8Array(0);
           mockVideo.on['encrypted'](
-              { initDataType: 'webm', initData: initData });
+              { initDataType: 'webm', initData: initData, keyId: null });
 
           expect(session1.addEventListener).toHaveBeenCalledWith(
               'keystatuseschange', jasmine.any(Function), false);
@@ -836,7 +859,7 @@ describe('DrmEngine', function() {
         initAndAttach().then(function() {
           var initData = new Uint8Array(0);
           mockVideo.on['encrypted'](
-              { initDataType: 'webm', initData: initData });
+              { initDataType: 'webm', initData: initData, keyId: null });
 
           var keyId1 = (new Uint8Array(1)).buffer;
           var keyId2 = (new Uint8Array(2)).buffer;
@@ -867,7 +890,7 @@ describe('DrmEngine', function() {
 
           var initData = new Uint8Array(0);
           mockVideo.on['encrypted'](
-              { initDataType: 'webm', initData: initData });
+              { initDataType: 'webm', initData: initData, keyId: null });
 
           var keyId1 = (new Uint8Array(1)).buffer;
           var keyId2 = (new Uint8Array(2)).buffer;
@@ -915,7 +938,7 @@ describe('DrmEngine', function() {
 
           var initData = new Uint8Array(0);
           mockVideo.on['encrypted'](
-              { initDataType: 'webm', initData: initData });
+              { initDataType: 'webm', initData: initData, keyId: null });
 
           var keyId1 = (new Uint8Array(1)).buffer;
           var keyId2 = (new Uint8Array(2)).buffer;
@@ -961,7 +984,7 @@ describe('DrmEngine', function() {
       initAndAttach().then(function() {
         var initData = new Uint8Array(0);
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData });
+            { initDataType: 'webm', initData: initData, keyId: null });
 
         fakeNetEngine.setResponseMap({ 'http://abc.drm/license': license });
         var message = new Uint8Array(0);
@@ -1023,7 +1046,7 @@ describe('DrmEngine', function() {
       initAndAttach().then(function() {
         var initData = new Uint8Array(0);
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData });
+            { initDataType: 'webm', initData: initData, keyId: null });
 
         fakeNetEngine.setResponseMap({ 'http://abc.drm/license': license });
         var message = new Uint8Array(0);
@@ -1048,9 +1071,9 @@ describe('DrmEngine', function() {
         var initData1 = new Uint8Array(1);
         var initData2 = new Uint8Array(2);
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData1 });
+            { initDataType: 'webm', initData: initData1, keyId: null });
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData2 });
+            { initDataType: 'webm', initData: initData2, keyId: null });
 
         var message = new Uint8Array(0);
         session1.on['message']({ target: session1, message: message });
@@ -1074,9 +1097,9 @@ describe('DrmEngine', function() {
         var initData1 = new Uint8Array(1);
         var initData2 = new Uint8Array(2);
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData1 });
+            { initDataType: 'webm', initData: initData1, keyId: null });
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData2 });
+            { initDataType: 'webm', initData: initData2, keyId: null });
 
         var message = new Uint8Array(0);
         session1.on['message']({ target: session1, message: message });
@@ -1097,9 +1120,9 @@ describe('DrmEngine', function() {
         var initData1 = new Uint8Array(1);
         var initData2 = new Uint8Array(2);
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData1 });
+            { initDataType: 'webm', initData: initData1, keyId: null });
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData2 });
+            { initDataType: 'webm', initData: initData2, keyId: null });
 
         var message = new Uint8Array(0);
         session1.on['message']({ target: session1, message: message });
@@ -1282,7 +1305,7 @@ describe('DrmEngine', function() {
       initAndAttach().then(function() {
         var initData1 = new Uint8Array(1);
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData1 });
+            { initDataType: 'webm', initData: initData1, keyId: null });
 
         // We are now blocked on generateRequest:
         expect(session1.generateRequest.calls.count()).toBe(1);
@@ -1301,7 +1324,7 @@ describe('DrmEngine', function() {
       initAndAttach().then(function() {
         var initData1 = new Uint8Array(1);
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData1 });
+            { initDataType: 'webm', initData: initData1, keyId: null });
 
         var message = new Uint8Array(0);
         session1.on['message']({ target: session1, message: message });
@@ -1331,7 +1354,7 @@ describe('DrmEngine', function() {
       initAndAttach().then(function() {
         var initData1 = new Uint8Array(1);
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData1 });
+            { initDataType: 'webm', initData: initData1, keyId: null });
 
         var message = new Uint8Array(0);
         session1.on['message']({ target: session1, message: message });
@@ -1358,7 +1381,7 @@ describe('DrmEngine', function() {
       initAndAttach().then(function() {
         var initData1 = new Uint8Array(1);
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData1 });
+            { initDataType: 'webm', initData: initData1, keyId: null });
 
         var message = new Uint8Array(0);
         session1.on['message']({ target: session1, message: message });
@@ -1390,9 +1413,9 @@ describe('DrmEngine', function() {
         var initData1 = new Uint8Array(1);
         var initData2 = new Uint8Array(2);
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData1 });
+            { initDataType: 'webm', initData: initData1, keyId: null });
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData2 });
+            { initDataType: 'webm', initData: initData2, keyId: null });
 
         // Still resolve these since we are mocking close and closed.  This
         // ensures DrmEngine is in the correct state.
@@ -1452,6 +1475,67 @@ describe('DrmEngine', function() {
     });
   });  // describe('getDrmInfo')
 
+  describe('getCommonDrmInfos', function() {
+    it('returns one array if the other is empty', function(done) {
+      var drmInfo = {
+        keySystem: 'drm.abc',
+        licenseServerUri: 'http://abc.drm/license',
+        distinctiveIdentifierRequired: true,
+        persistentStateRequired: true,
+        audioRobustness: 'good',
+        videoRobustness: 'really_really_ridiculously_good',
+        serverCertificate: undefined,
+        initData: [],
+        keyIds: ['deadbeefdeadbeefdeadbeefdeadbeef']
+      };
+      var returnedOne = shaka.media.DrmEngine.getCommonDrmInfos([drmInfo], []);
+      var returnedTwo = shaka.media.DrmEngine.getCommonDrmInfos([], [drmInfo]);
+      expect(returnedOne).toEqual([drmInfo]);
+      expect(returnedTwo).toEqual([drmInfo]);
+      done();
+    });
+
+    it('merges drmInfos if two exist', function(done) {
+      var serverCert = new Uint8Array(0);
+      var drmInfoVideo = {
+        keySystem: 'drm.abc',
+        licenseServerUri: 'http://abc.drm/license',
+        distinctiveIdentifierRequired: false,
+        persistentStateRequired: true,
+        videoRobustness: 'really_really_ridiculously_good',
+        serverCertificate: serverCert,
+        initData: ['blah'],
+        keyIds: ['deadbeefdeadbeefdeadbeefdeadbeef']
+      };
+      var drmInfoAudio = {
+        keySystem: 'drm.abc',
+        licenseServerUri: undefined,
+        distinctiveIdentifierRequired: true,
+        persistentStateRequired: false,
+        audioRobustness: 'good',
+        serverCertificate: undefined,
+        initData: ['init data'],
+        keyIds: ['eadbeefdeadbeefdeadbeefdeadbeefd']
+      };
+      var drmInfoDesired = {
+        keySystem: 'drm.abc',
+        licenseServerUri: 'http://abc.drm/license',
+        distinctiveIdentifierRequired: true,
+        persistentStateRequired: true,
+        audioRobustness: 'good',
+        videoRobustness: 'really_really_ridiculously_good',
+        serverCertificate: serverCert,
+        initData: ['blah', 'init data'],
+        keyIds: ['deadbeefdeadbeefdeadbeefdeadbeef',
+                 'eadbeefdeadbeefdeadbeefdeadbeefd']
+      };
+      var returned = shaka.media.DrmEngine.getCommonDrmInfos([drmInfoVideo],
+          [drmInfoAudio]);
+      expect(returned).toEqual([drmInfoDesired]);
+      done();
+    });
+  }); // describe('getCommonDrmInfos')
+
   describe('configure', function() {
     it('delays initial license requests if configured to', function(done) {
       config.delayLicenseRequestUntilPlayed = true;
@@ -1461,7 +1545,7 @@ describe('DrmEngine', function() {
       initAndAttach().then(function() {
         var initData = new Uint8Array(0);
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData });
+            { initDataType: 'webm', initData: initData, keyId: null });
 
         fakeNetEngine.request.and.returnValue(new shaka.util.PublicPromise());
         var message = new Uint8Array(0);
@@ -1489,7 +1573,7 @@ describe('DrmEngine', function() {
       initAndAttach().then(function() {
         var initData = new Uint8Array(0);
         mockVideo.on['encrypted'](
-            { initDataType: 'webm', initData: initData });
+            { initDataType: 'webm', initData: initData, keyId: null });
 
         fakeNetEngine.request.and.returnValue(new shaka.util.PublicPromise());
         var message = new Uint8Array(0);
@@ -1523,6 +1607,80 @@ describe('DrmEngine', function() {
       }).catch(fail).then(done);
     });
   }); // describe('configure')
+
+  describe('removeSessions', function() {
+    var updatePromise1, updatePromise2;
+
+    beforeEach(function(done) {
+      session1.load.and.returnValue(Promise.resolve(true));
+      session2.load.and.returnValue(Promise.resolve(true));
+
+      // When remove() is called, it should resolve quickly and raise a
+      // 'message' event of type 'license-release'.  The removeSessions method
+      // should wait until update() is complete with the response.
+      updatePromise1 = new shaka.util.PublicPromise();
+      updatePromise2 = new shaka.util.PublicPromise();
+      session1.remove.and.callFake(function() {
+        // Raise the event synchronously, even though it doesn't normally.
+        session1.on['message']({target: session1, message: new ArrayBuffer(0)});
+        session1.update.and.returnValue(updatePromise1);
+        return Promise.resolve();
+      });
+      session2.remove.and.callFake(function() {
+        session2.on['message']({target: session2, message: new ArrayBuffer(0)});
+        session2.update.and.returnValue(updatePromise2);
+        return Promise.resolve();
+      });
+
+      drmEngine.init(manifest, /* offline */ true).catch(fail).then(done);
+    });
+
+    it('waits until update() is complete', function(done) {
+      shaka.test.Util.delay(0.1).then(
+          updatePromise1.resolve.bind(updatePromise1));
+      shaka.test.Util.delay(0.3).then(
+          updatePromise2.resolve.bind(updatePromise2));
+
+      drmEngine.removeSessions(['abc', 'def']).then(function() {
+        expect(session1.update).toHaveBeenCalled();
+        expect(session2.update).toHaveBeenCalled();
+      }).catch(fail).then(done);
+    });
+
+    it('is rejected when network request fails', function(done) {
+      var p = fakeNetEngine.delayNextRequest();
+      var networkError = new shaka.util.Error(
+          shaka.util.Error.Category.NETWORK,
+          shaka.util.Error.Code.BAD_HTTP_STATUS);
+      p.reject(networkError);
+      onErrorSpy.and.stub();
+
+      drmEngine.removeSessions(['abc', 'def']).then(fail).catch(function(err) {
+        shaka.test.Util.expectToEqualError(
+            err,
+            new shaka.util.Error(
+                shaka.util.Error.Category.DRM,
+                shaka.util.Error.Code.LICENSE_REQUEST_FAILED,
+                networkError));
+        // The first session's request was rejected.
+        expect(session1.update).not.toHaveBeenCalled();
+      }).catch(fail).then(done);
+    });
+
+    it('is rejected when update() is rejected', function(done) {
+      updatePromise1.reject({message: 'Error'});
+      onErrorSpy.and.stub();
+
+      drmEngine.removeSessions(['abc', 'def']).then(fail).catch(function(err) {
+        shaka.test.Util.expectToEqualError(
+            err,
+            new shaka.util.Error(
+                shaka.util.Error.Category.DRM,
+                shaka.util.Error.Code.LICENSE_RESPONSE_REJECTED,
+                'Error'));
+      }).catch(fail).then(done);
+    });
+  });
 
   function initAndAttach() {
     return drmEngine.init(manifest, /* offline */ false).then(function() {

@@ -273,7 +273,7 @@ shaka.test.ManifestGenerator.prototype.addInitData = function(type, buffer) {
   var drmInfo = this.currentDrmInfo_();
   if (!drmInfo.initData)
     drmInfo.initData = [];
-  drmInfo.initData.push({initData: buffer, initDataType: type});
+  drmInfo.initData.push({initData: buffer, initDataType: type, keyId: null});
   return this;
 };
 
@@ -445,7 +445,7 @@ shaka.test.ManifestGenerator.prototype.createStream_ =
     mimeType: defaultMimeType,
     codecs: defaultCodecs,
     frameRate: undefined,
-    bandwidth: 100,
+    bandwidth: undefined,
     width: undefined,
     height: undefined,
     kind: undefined,
@@ -454,7 +454,8 @@ shaka.test.ManifestGenerator.prototype.createStream_ =
     language: language,
     type: type,
     primary: false,
-    trickModeVideo: null
+    trickModeVideo: null,
+    containsEmsgBoxes: false
   };
   stream.createSegmentIndex.and.callFake(
       function() { return Promise.resolve(); });
@@ -489,6 +490,18 @@ shaka.test.ManifestGenerator.prototype.anyInitSegment = function() {
   stream.initSegmentReference =
       /** @type {shaka.media.InitSegmentReference} */ (
           jasmine.any(shaka.media.InitSegmentReference));
+  return this;
+};
+
+
+/**
+ * Sets the init segment of the current stream to null.
+ *
+ * @return {!shaka.test.ManifestGenerator}
+ */
+shaka.test.ManifestGenerator.prototype.nullInitSegment = function() {
+  var stream = this.currentStream_();
+  stream.initSegmentReference = null;
   return this;
 };
 

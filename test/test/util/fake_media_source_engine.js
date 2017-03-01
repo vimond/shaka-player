@@ -80,8 +80,7 @@ shaka.test.FakeMediaSourceEngine = function(segmentData, opt_drift) {
   spyOn(this, 'clear').and.callThrough();
   spyOn(this, 'flush').and.callThrough();
   spyOn(this, 'endOfStream').and.callThrough();
-  spyOn(this, 'setTimestampOffset').and.callThrough();
-  spyOn(this, 'setAppendWindowEnd').and.callThrough();
+  spyOn(this, 'setStreamProperties').and.callThrough();
   spyOn(this, 'setDuration').and.callThrough();
   spyOn(this, 'getDuration').and.callThrough();
 };
@@ -156,21 +155,27 @@ shaka.test.FakeMediaSourceEngine.prototype.bufferedAheadOf = function(
     type, start, opt_tolerance) {
   if (this.segments[type] === undefined) throw new Error('unexpected type');
 
+  var hasSegment = (function(i) {
+    return this.segments[type][i] ||
+        (type === 'video' && this.segments['trickvideo'] &&
+         this.segments['trickvideo'][i]);
+  }.bind(this));
+
   var tolerance = 0;
   // Note: |start| may equal the end of the last segment, so |first|
   // may equal segments[type].length
   var first = this.toIndex_(type, start);
-  if (!this.segments[type][first] && opt_tolerance) {
+  if (!hasSegment(first) && opt_tolerance) {
     first = this.toIndex_(type, start + opt_tolerance);
     tolerance = opt_tolerance;
   }
-  if (!this.segments[type][first])
+  if (!hasSegment(first))
     return 0;  // Unbuffered.
 
   // Find the first gap.
-  var last = this.segments[type].indexOf(false, first);
-  if (last < 0)
-    last = this.segments[type].length;  // Buffered everything.
+  var last = first;
+  while (last < this.segments[type].length && hasSegment(last))
+    last++;
 
   return this.toTime_(type, last) - start + tolerance;
 };
@@ -275,17 +280,11 @@ shaka.test.FakeMediaSourceEngine.prototype.flush = function(type) {
 
 
 /** @override */
-shaka.test.FakeMediaSourceEngine.prototype.setTimestampOffset = function(
-    type, offset) {
+shaka.test.FakeMediaSourceEngine.prototype.setStreamProperties = function(
+    type, offset, appendWindowEnd) {
   if (this.segments[type] === undefined) throw new Error('unexpected type');
   this.timestampOffsets_[type] = offset;
-  return Promise.resolve();
-};
-
-
-/** @override */
-shaka.test.FakeMediaSourceEngine.prototype.setAppendWindowEnd = function(
-    type, appendWindowEnd) {
+  // Don't use |appendWindowEnd|.
   return Promise.resolve();
 };
 

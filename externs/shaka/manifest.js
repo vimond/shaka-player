@@ -113,7 +113,8 @@ shakaExtern.Period;
 /**
  * @typedef {{
  *   initData: !Uint8Array,
- *   initDataType: string
+ *   initDataType: string,
+ *   keyId: ?string
  * }}
  *
  * @description
@@ -125,6 +126,8 @@ shakaExtern.Period;
  *   Initialization data in the format indicated by initDataType.
  * @property {string} initDataType
  *   A string to indicate what format initData is in.
+ * @property {?string} keyId
+ *   The key Id that corresponds to this initData.
  *
  * @exportDoc
  */
@@ -295,7 +298,8 @@ shakaExtern.GetSegmentReferenceFunction;
  *   language: string,
  *   type: string,
  *   primary: boolean,
- *   trickModeVideo: ?shakaExtern.Stream
+ *   trickModeVideo: ?shakaExtern.Stream,
+ *   containsEmsgBoxes: boolean
  * }}
  *
  * @description
@@ -377,6 +381,10 @@ shakaExtern.GetSegmentReferenceFunction;
  * @property {?shakaExtern.Stream} trickModeVideo
  *   <i>Video streams only.</i> <br>
  *   An alternate video stream to use for trick mode playback.
+ * @property {boolean} containsEmsgBoxes
+ *   <i>Defaults to false.</i><br>
+ *   Whether the stream contains embedded 'emsg' boxes that should result in
+ *   Player events.
  *
  * @exportDoc
  */

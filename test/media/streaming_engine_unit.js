@@ -46,6 +46,7 @@ describe('StreamingEngine', function() {
   var onChooseStreams;
   var onCanSwitch;
   var onError;
+  var onEvent;
   var onInitialStreamsSetup;
   var onStartupComplete;
   var streamingEngine;
@@ -363,6 +364,7 @@ describe('StreamingEngine', function() {
     onStartupComplete = jasmine.createSpy('onStartupComplete');
     onError = jasmine.createSpy('onError');
     onError.and.callFake(fail);
+    onEvent = jasmine.createSpy('onEvent');
 
     var config;
     if (opt_config) {
@@ -374,7 +376,8 @@ describe('StreamingEngine', function() {
         retryParameters: shaka.net.NetworkingEngine.defaultRetryParameters(),
         bufferBehind: Infinity,
         ignoreTextStreamFailures: false,
-        useRelativeCueTimestamps: false
+        useRelativeCueTimestamps: false,
+        startAtSegmentBoundary: false
       };
     }
 
@@ -383,7 +386,7 @@ describe('StreamingEngine', function() {
         mediaSourceEngine,
         /** @type {!shaka.net.NetworkingEngine} */(netEngine),
         /** @type {shakaExtern.Manifest} */(manifest),
-        onChooseStreams, onCanSwitch, onError,
+        onChooseStreams, onCanSwitch, onError, onEvent,
         onInitialStreamsSetup, onStartupComplete);
     streamingEngine.configure(config);
   }
@@ -1129,6 +1132,71 @@ describe('StreamingEngine', function() {
         text: [true, true, true, true]
       });
     });
+
+    it('into partially buffered regions', function() {
+      // Seeking into a region where some buffers (text) are buffered and some
+      // are not should work despite the media states requiring different
+      // periods.
+      playhead.getTime.and.returnValue(0);
+
+      onChooseStreams.and.callFake(function(period) {
+        expect(period).toBe(manifest.periods[0]);
+
+        onChooseStreams.and.callFake(function(period) {
+          expect(period).toBe(manifest.periods[1]);
+
+          // Should get another call for the unbuffered Period transition.
+          onChooseStreams.and.callFake(defaultOnChooseStreams);
+
+          mediaSourceEngine.endOfStream.and.callFake(function() {
+            // Should have the first Period entirely buffered.
+            expect(mediaSourceEngine.initSegments).toEqual({
+              audio: [false, true],
+              video: [false, true],
+              text: []
+            });
+            expect(mediaSourceEngine.segments).toEqual({
+              audio: [true, true, true, true],
+              video: [true, true, true, true],
+              text: [true, true, true, true]
+            });
+
+            // Fake the audio/video buffers being removed.
+            mediaSourceEngine.segments.audio = [false, false, true, true];
+            mediaSourceEngine.segments.video = [false, false, true, true];
+
+            // Seek back into the first Period.
+            expect(playhead.getTime()).toBe(26);
+            playheadTime -= 20;
+            streamingEngine.seeked();
+
+            mediaSourceEngine.endOfStream.and.stub();
+          });
+
+          return defaultOnChooseStreams(period);
+        });
+
+        return defaultOnChooseStreams(period);
+      });
+
+      onStartupComplete.and.callFake(setupFakeGetTime.bind(null, 0));
+
+      // Here we go!
+      streamingEngine.init();
+      runTest();
+
+      // Verify buffers.
+      expect(mediaSourceEngine.initSegments).toEqual({
+        audio: [false, true],
+        video: [false, true],
+        text: []
+      });
+      expect(mediaSourceEngine.segments).toEqual({
+        audio: [true, true, true, true],
+        video: [true, true, true, true],
+        text: [true, true, true, true]
+      });
+    });
   });
 
   describe('handles seeks (live)', function() {
@@ -1546,7 +1614,8 @@ describe('StreamingEngine', function() {
         retryParameters: shaka.net.NetworkingEngine.defaultRetryParameters(),
         bufferBehind: 10,
         ignoreTextStreamFailures: false,
-        useRelativeCueTimestamps: false
+        useRelativeCueTimestamps: false,
+        startAtSegmentBoundary: false
       };
 
       mediaSourceEngine = new shaka.test.FakeMediaSourceEngine(segmentData);
@@ -1627,7 +1696,8 @@ describe('StreamingEngine', function() {
         retryParameters: shaka.net.NetworkingEngine.defaultRetryParameters(),
         bufferBehind: 10,
         ignoreTextStreamFailures: false,
-        useRelativeCueTimestamps: false
+        useRelativeCueTimestamps: false,
+        startAtSegmentBoundary: false
       };
 
       mediaSourceEngine = new shaka.test.FakeMediaSourceEngine(segmentData);
@@ -1693,7 +1763,8 @@ describe('StreamingEngine', function() {
         retryParameters: shaka.net.NetworkingEngine.defaultRetryParameters(),
         bufferBehind: 10,
         ignoreTextStreamFailures: false,
-        useRelativeCueTimestamps: false
+        useRelativeCueTimestamps: false,
+        startAtSegmentBoundary: false
       };
 
       mediaSourceEngine = new shaka.test.FakeMediaSourceEngine(segmentData);
@@ -1875,6 +1946,7 @@ describe('StreamingEngine', function() {
         bufferBehind: Infinity,
         ignoreTextStreamFailures: false,
         useRelativeCueTimestamps: false,
+        startAtSegmentBoundary: false,
         // Only buffer ahead 1 second to make it easier to set segment
         // expectations based on playheadTime.
         rebufferingGoal: 1,
@@ -1968,6 +2040,79 @@ describe('StreamingEngine', function() {
         }
       });
       expect(mediaSourceEngine.endOfStream).toHaveBeenCalled();
+    });
+  });
+
+  describe('embedded emsg boxes', function() {
+    beforeEach(function() {
+      setupVod();
+      mediaSourceEngine = new shaka.test.FakeMediaSourceEngine(segmentData);
+      createStreamingEngine();
+
+      playhead.getTime.and.returnValue(0);
+      onStartupComplete.and.callFake(setupFakeGetTime.bind(null, 0));
+      onChooseStreams.and.callFake(defaultOnChooseStreams.bind(null));
+    });
+
+    it('raises an event for embedded emsg boxes', function() {
+      videoStream1.containsEmsgBoxes = true;
+      segmentData.video.segments[0] = new Uint8Array([
+        0, 0, 0, 59, 101, 109, 115, 103,
+        0, 0, 0, 0, 102, 111, 111, 58, 98,
+        97, 114, 58, 99, 117, 115, 116, 111,
+        109, 100, 97, 116, 97, 115, 99, 104,
+        101, 109, 101, 0, 49, 0, 0, 0, 0,
+        1, 0, 0, 0, 8, 0, 0, 255, 255, 0,
+        0, 0, 1, 116, 101, 115, 116
+      ]).buffer;
+
+      // Here we go!
+      streamingEngine.init();
+      runTest();
+
+      expect(onEvent).toHaveBeenCalled();
+
+      var event = onEvent.calls.argsFor(0)[0];
+      expect(event.detail).toEqual({
+        startTime: 8,
+        endTime: 0xffff + 8,
+        schemeIdUri: 'foo:bar:customdatascheme',
+        value: '1',
+        timescale: 1,
+        presentationTimeDelta: 8,
+        eventDuration: 0xffff,
+        id: 1,
+        messageData: new Uint8Array([116, 101, 115, 116])
+      });
+    });
+
+    it('won\'t raise an event without stream field set', function() {
+      videoStream1.containsEmsgBoxes = false;
+      segmentData.video.segments[0] = new Uint8Array([
+        0, 0, 0, 59, 101, 109, 115, 103,
+        0, 0, 0, 0, 102, 111, 111, 58, 98,
+        97, 114, 58, 99, 117, 115, 116, 111,
+        109, 100, 97, 116, 97, 115, 99, 104,
+        101, 109, 101, 0, 49, 0, 0, 0, 0,
+        1, 0, 0, 0, 8, 0, 0, 255, 255, 0,
+        0, 0, 1, 116, 101, 115, 116
+      ]).buffer;
+
+      // Here we go!
+      streamingEngine.init();
+      runTest();
+
+      expect(onEvent).not.toHaveBeenCalled();
+    });
+
+    it('won\'t raise an event when no emsg boxes present', function() {
+      videoStream1.containsEmsgBoxes = true;
+
+      // Here we go!
+      streamingEngine.init();
+      runTest();
+
+      expect(onEvent).not.toHaveBeenCalled();
     });
   });
 

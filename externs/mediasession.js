@@ -15,24 +15,25 @@
  * limitations under the License.
  */
 
-goog.provide('shaka.util.IDestroyable');
-
-
 
 /**
- * An interface to standardize how objects are destroyed.
- * @interface
- * @exportInterface
- */
-shaka.util.IDestroyable = function() {};
-
-
-/**
- * Destroys the object, releasing all resources and shutting down all
- * operations.  Returns a Promise which is resolved when destruction is
- * complete.  This Promise should never be rejected.
+ * @fileoverview Externs for MediaSession based on
+ * {@link https://goo.gl/8QS094 Editor's Draft, 12 January 2017}
  *
- * @return {!Promise}
- * @exportInterface
+ * @externs
  */
-shaka.util.IDestroyable.prototype.destroy = function() {};
+
+
+
+/**
+ * @constructor
+ */
+var MediaMetadata = function(options) {};
+
+
+/** @type {string} */
+MediaMetadata.prototype.title;
+
+
+/** @type {MediaMetadata} */
+Navigator.prototype.mediaSession;

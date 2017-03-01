@@ -31,9 +31,9 @@
  *   The timestamp the choice was made, in seconds since 1970
  *   (i.e. Date.now() / 1000).
  * @property {number} id
- *   The id of the stream that was chosen.
+ *   The id of the track that was chosen.
  * @property {string} type
- *   The type of stream chosen ('audio', 'text', or 'video')
+ *   The type of stream chosen ('variant' or 'text')
  * @property {boolean} fromAdaptation
  *   True if the choice was made by AbrManager for adaptation; false if it
  *   was made by the application through selectTrack.
@@ -141,7 +141,8 @@ shakaExtern.Stats;
  * @description
  * An object describing a media track.  This object should be treated as
  * read-only as changing any values does not have any effect.  This is the
- * public view of the Stream type.
+ * public view of an audio/video paring (variant type) or text track (text
+ * type).
  *
  * @property {number} id
  *   The unique ID of the track.
@@ -150,20 +151,20 @@ shakaExtern.Stats;
  *   visible/audible in the buffer).
  *
  * @property {string} type
- *   The type of track, one of 'audio', 'text', or 'video'.
+ *   The type of track, either 'variant' or 'text'.
  * @property {number} bandwidth
  *   The bandwidth required to play the track, in bits/sec.
  *
  * @property {string} language
- *   The language of the track, or '' for video tracks.  This is the exact
+ *   The language of the track, or 'und' if not given.  This is the exact
  *   value provided in the manifest; it may need to be normalized.
  * @property {?string} kind
  *   (only for text tracks) The kind of text track, either 'captions' or
  *   'subtitles'.
  * @property {?number} width
- *   (only for video tracks) The width of the track in pixels.
+ *   The video width provided in the manifest, if present.
  * @property {?number} height
- *   (only for video tracks) The height of the track in pixels.
+ *   The video height provided in the manifest, if present.
  * @property {?number} frameRate
  *   The video framerate provided in the manifest, if present.
  * @property {?string} mimeType
@@ -288,6 +289,8 @@ shakaExtern.TimelineRegionInfo;
  * @typedef {{
  *   schemeIdUri: string,
  *   value: string,
+ *   startTime: number,
+ *   endTime: number,
  *   timescale: number,
  *   presentationTimeDelta: number,
  *   eventDuration: number,
@@ -299,21 +302,24 @@ shakaExtern.TimelineRegionInfo;
  * Contains information about an EMSG MP4 box.
  *
  * @property {string} schemeIdUri
- *    Identifies the message scheme.
+ *   Identifies the message scheme.
  * @property {string} value
- *    Specifies the value for the event.
+ *   Specifies the value for the event.
+ * @property {number} startTime
+ *   The time that the event starts (in presentation time).
+ * @property {number} endTime
+ *   The time that the event ends (in presentation time).
  * @property {number} timescale
- *    Provides the timescale, in ticks per second,
- *    for the time and duration fields within this box.
+ *   Provides the timescale, in ticks per second.
  * @property {number} presentationTimeDelta
- *    Provides the Media Presentation time delta of the media presentation
- *    time of the event and the earliest presentation time in this segment.
+ *   The offset that the event starts, relative to the start of the segment
+ *   this is contained in (in units of timescale).
  * @property {number} eventDuration
- *    Provides the duration of event in media presentation time.
+ *   The duration of the event (in units of timescale).
  * @property {number} id
- *    A field identifying this instance of the message.
+ *   A field identifying this instance of the message.
  * @property {Uint8Array} messageData
- *    Body of the message.
+ *   Body of the message.
  * @exportDoc
  */
 shakaExtern.EmsgInfo;
@@ -439,7 +445,8 @@ shakaExtern.ManifestConfiguration;
  *   bufferingGoal: number,
  *   bufferBehind: number,
  *   ignoreTextStreamFailures: boolean,
- *   useRelativeCueTimestamps: boolean
+ *   useRelativeCueTimestamps: boolean,
+ *   startAtSegmentBoundary: boolean
  * }}
  *
  * @description
@@ -466,6 +473,11 @@ shakaExtern.ManifestConfiguration;
  * @property {boolean} useRelativeCueTimestamps
  *   If true, WebVTT cue timestamps will be treated as relative to the start
  *   time of the VTT segment. Defaults to false.
+ * @property {boolean} startAtSegmentBoundary
+ *   If true, adjust the start time backwards so it is at the start of a
+ *   segment. This affects both explicit start times and calculated start time
+ *   for live streams. This can put us further from the live edge. Defaults to
+ *   false.
  * @exportDoc
  */
 shakaExtern.StreamingConfiguration;

@@ -35,7 +35,8 @@ shakaAssets.Encoder = {
   BITCODIN: 'Bitcodin',
   NIMBLE_STREAMER: 'Nimble Streamer',
   AZURE_MEDIA_SERVICES: 'Azure Media Services',
-  MP4BOX: 'MP4Box'
+  MP4BOX: 'MP4Box',
+  APPLE: 'Apple'
 };
 
 
@@ -88,7 +89,9 @@ shakaAssets.Feature = {
   WEBVTT: 'WebVTT',
 
   HIGH_DEFINITION: 'high definition',
-  ULTRA_HIGH_DEFINITION: 'ultra-high definition'
+  ULTRA_HIGH_DEFINITION: 'ultra-high definition',
+
+  HLS: 'HLS'
 };
 
 
@@ -233,7 +236,8 @@ shakaAssets.YouTubeCallback = function(node) {
     for (var i = 0; i < node.childNodes.length; ++i) {
       var child = node.childNodes[i];
       if (child.nodeName == 'yt:SystemURL') {
-        var licenseServerUri = child.textContent;
+        // The URL may be http, but the demo app requires https.
+        var licenseServerUri = child.textContent.replace(/^http:/, 'https:');
         var typeAttr = child.getAttribute('type');
         var keySystem;
         // NOTE: Ignoring clearkey type here because this YT demo content does
@@ -325,6 +329,19 @@ shakaAssets.testAssets = [
     licenseServers: {
       'org.w3.clearkey': '//cwip-shaka-proxy.appspot.com/clearkey?_u3wDe7erb7v8Lqt8A3QDQ=ABEiM0RVZneImaq7zN3u_w'  // gjslint: disable=110
     }
+  },
+  {
+    name: 'Angel One (HLS, multilingual)',
+    manifestUri: '//storage.googleapis.com/shaka-demo-assets/angel-one-hls/master.m3u8',  // gjslint: disable=110
+
+    encoder: shakaAssets.Encoder.APPLE,
+    source: shakaAssets.Source.SHAKA,
+    drm: [],
+    features: [
+      shakaAssets.Feature.MP4,
+      shakaAssets.Feature.MULTIPLE_LANGUAGES,
+      shakaAssets.Feature.HLS
+    ]
   },
   {
     name: 'Sintel 4k (multicodec)',
@@ -818,6 +835,20 @@ shakaAssets.testAssets = [
       shakaAssets.Feature.SEGMENT_TEMPLATE_TIMELINE
     ]
   },
+  {
+    name: 'Live sim (multi-period)',
+    manifestUri: '//vm2.dashif.org/livesim/utc_head/periods_20/testpic_2s/Manifest.mpd',  // gjslint: disable=110
+
+    encoder: shakaAssets.Encoder.UNKNOWN,
+    source: shakaAssets.Source.DASH_IF,
+    drm: [],
+    features: [
+      shakaAssets.Feature.LIVE,
+      shakaAssets.Feature.MP4,
+      shakaAssets.Feature.MULTIPERIOD,
+      shakaAssets.Feature.SEGMENT_TEMPLATE_TIMELINE
+    ]
+  },
   // }}}
 
   // Wowza assets {{{
@@ -1050,6 +1081,4 @@ shakaAssets.testAssets = [
     ]
   }
   // }}}
-
-  // TODO: Add a stable live stream with multiple periods.
 ];
