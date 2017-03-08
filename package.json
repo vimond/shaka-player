@@ -1,15 +1,11 @@
 {
-  "name": "shaka-player",
+  "name": "vimond-shaka-player",
   "description": "DASH/EME video player library",
-  "version": "2.0.0",
-  "homepage": "https://github.com/google/shaka-player",
-  "author": "Google",
-  "maintainers": [
-    {
-      "name": "Joey Parrish",
-      "email": "joeyparrish@google.com"
-    }
-  ],
+  "version": "2.0.1",
+  "homepage": "https://github.com/vimond/shaka-player",
+  "publishConfig": {
+    "registry": "https://vimond.artifactoryonline.com/vimond/api/npm/npm-local/"
+  },
   "devDependencies": {
     "array-includes": "^3.0.2",
     "es6-shim": "^0.35.2",
@@ -37,13 +33,13 @@
   "main": "dist/shaka-player.compiled.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/google/shaka-player.git"
+    "url": "https://github.com/vimond/shaka-player.git"
   },
   "bugs": {
-    "url": "https://github.com/google/shaka-player/issues"
+    "url": "https://github.com/vimond/shaka-player/issues"
   },
   "license": "Apache-2.0",
   "scripts": {
-    "prepublish": "in-publish && python ./build/checkversion.py && python ./build/all.py && python ./build/build.py --debug || not-in-publish"
+    "prepublish": "in-publish && python ./build/all.py && python ./build/build.py --debug || not-in-publish"
   }
 }
