@@ -5,6 +5,7 @@
  */
 
 goog.provide('shaka.vimond.dash.ManifestModificationSetup');
+goog.require('shaka.vimond.dash.ReplacementRule');
 
 /**
  * Creates an ManifestModificationSetup object speficying rules for manifest modification.
