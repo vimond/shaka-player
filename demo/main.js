@@ -15,6 +15,13 @@
  * limitations under the License.
  */
 
+/**
+ * @fileoverview Shaka Player demo, main section.
+ *
+ * @suppress {visibility} to work around compiler errors until we can
+ *   refactor the demo into classes that talk via public method.  TODO
+ */
+
 
 /** @suppress {duplicate} */
 var shakaDemo = shakaDemo || {};
@@ -44,6 +51,14 @@ shakaDemo.support_;
 shakaDemo.controls_ = null;
 
 
+/** @private {?number} */
+shakaDemo.lastMousePressTime_ = null;
+
+
+/** @private {boolean} */
+shakaDemo.hashCanChange_ = false;
+
+
 /**
  * The registered ID of the v2.1 Chromecast receiver demo.
  * @const {string}
@@ -67,45 +82,22 @@ shakaDemo.init = function() {
   document.getElementById('preferredAudioLanguage').value = language;
   document.getElementById('preferredTextLanguage').value = language;
 
-  // Read URL parameters.
-  var fields = location.search.split('?').slice(1).join('?');
-  fields = fields ? fields.split(';') : [];
-  var params = {};
-  for (var i = 0; i < fields.length; ++i) {
-    var kv = fields[i].split('=');
-    params[kv[0]] = kv.slice(1).join('=');
-  }
-
-  if ('lang' in params) {
-    document.getElementById('preferredAudioLanguage').value = params['lang'];
-    document.getElementById('preferredTextLanguage').value = params['lang'];
-  }
-  if ('asset' in params) {
-    document.getElementById('manifestInput').value = params['asset'];
-  }
-  if ('license' in params) {
-    document.getElementById('licenseServerInput').value = params['license'];
-  }
-  if ('logtoscreen' in params) {
-    document.getElementById('logToScreen').checked = true;
-  }
-  if ('noinput' in params) {
-    // Both the content container and body need different styles in this mode.
-    document.getElementById('container').className = 'noinput';
-    document.body.className = 'noinput';
-  }
-
-  if ('vv' in params && shaka.log) {
-    shaka.log.setLevel(shaka.log.Level.V2);
-  } else if ('v' in params && shaka.log) {
-    shaka.log.setLevel(shaka.log.Level.V1);
-  } else if ('debug' in params && shaka.log) {
-    shaka.log.setLevel(shaka.log.Level.DEBUG);
-  }
+  var params = shakaDemo.getParams_();
 
   shakaDemo.setupLogging_();
 
+  shakaDemo.preBrowserCheckParams_(params);
+
   shaka.polyfill.installAll();
+
+  // Listen to events to automatically blur elements focused by mouse input.
+  // This is to prevent the borders from showing up when not needed, as they
+  // are distracting for the user (not to mention fairly ugly).
+  // Because of event bubbling, this will implicitly listen to child elements.
+  document.body.addEventListener(
+      'focus', shakaDemo.onFocus_.bind(shakaDemo), true /* capture phase */);
+  document.body.addEventListener(
+      'mousedown', shakaDemo.onMouseDown_.bind(shakaDemo));
 
   if (!shaka.Player.isBrowserSupported()) {
     var errorDisplayLink = document.getElementById('errorDisplayLink');
@@ -156,7 +148,7 @@ shakaDemo.init = function() {
       shakaDemo.player_.addEventListener('error', shakaDemo.onErrorEvent_);
       shakaDemo.localPlayer_ = localPlayer;
 
-      shakaDemo.setupAssets_();
+      var asyncSetup = shakaDemo.setupAssets_();
       shakaDemo.setupOffline_();
       shakaDemo.setupConfiguration_();
       shakaDemo.setupInfo_();
@@ -165,18 +157,293 @@ shakaDemo.init = function() {
       shakaDemo.controls_.init(shakaDemo.castProxy_, shakaDemo.onError_,
                                shakaDemo.onCastStatusChange_);
 
-      // If a custom asset was given in the URL, select it now.
-      if ('asset' in params) {
-        var assetList = document.getElementById('assetList');
-        var customAsset = document.getElementById('customAsset');
-        assetList.selectedIndex = assetList.options.length - 1;
-        customAsset.style.display = 'block';
-      }
-
-      if ('play' in params) {
-        shakaDemo.load();
-      }
+      asyncSetup.then(function() {
+        shakaDemo.postBrowserCheckParams_(params);
+      });
     });
+  }
+};
+
+
+/**
+  * @return {!Object.<string, string>} params
+  * @private
+  */
+shakaDemo.getParams_ = function() {
+  // Read URL parameters.
+  var fields = location.search.substr(1);
+  fields = fields ? fields.split(';') : [];
+  var fragments = location.hash.substr(1);
+  fragments = fragments ? fragments.split(';') : [];
+
+  // Because they are being concatenated in this order, if both an
+  // URL fragment and an URL parameter of the same type are present
+  // the URL fragment takes precendence.
+  var combined = fields.concat(fragments);
+  var params = {};
+  for (var i = 0; i < combined.length; ++i) {
+    var kv = combined[i].split('=');
+    params[kv[0]] = kv.slice(1).join('=');
+  }
+  return params;
+};
+
+
+/**
+  * @param {!Object.<string, string>} params
+  * @private
+  */
+shakaDemo.preBrowserCheckParams_ = function(params) {
+  if ('lang' in params) {
+    document.getElementById('preferredAudioLanguage').value = params['lang'];
+    document.getElementById('preferredTextLanguage').value = params['lang'];
+  }
+  if ('audiolang' in params) {
+    document.getElementById('preferredAudioLanguage').value =
+        params['audiolang'];
+  }
+  if ('textlang' in params) {
+    document.getElementById('preferredTextLanguage').value = params['textlang'];
+  }
+  if ('asset' in params) {
+    document.getElementById('manifestInput').value = params['asset'];
+  }
+  if ('license' in params) {
+    document.getElementById('licenseServerInput').value = params['license'];
+  }
+  if ('logtoscreen' in params) {
+    document.getElementById('logToScreen').checked = true;
+    // Call onLogChange_ manually, because setting checked
+    // programatically doesn't fire a 'change' event.
+    shakaDemo.onLogChange_();
+  }
+  if ('noinput' in params) {
+    // Both the content container and body need different styles in this mode.
+    document.getElementById('container').className = 'noinput';
+    document.body.className = 'noinput';
+  }
+  if ('play' in params) {
+    document.getElementById('enableAutoplay').checked = true;
+  }
+  // shaka.log is not set if logging isn't enabled.
+  // I.E. if using the compiled version of shaka.
+  if (shaka.log) {
+    // The log level selector is only visible if logging is available.
+    document.getElementById('logLevelListDiv').hidden = false;
+
+    // Set log level.
+    var toSelectValue;
+    if ('vv' in params) {
+      toSelectValue = 'vv';
+      shaka.log.setLevel(shaka.log.Level.V2);
+    } else if ('v' in params) {
+      toSelectValue = 'v';
+      shaka.log.setLevel(shaka.log.Level.V1);
+    } else if ('debug' in params) {
+      toSelectValue = 'debug';
+      shaka.log.setLevel(shaka.log.Level.DEBUG);
+    }
+    if (toSelectValue) {
+      // Set the log level selector to the proper value.
+      var logLevelList = document.getElementById('logLevelList');
+      for (var index = 0; index < logLevelList.length; index++) {
+        if (logLevelList[index].value == toSelectValue) {
+          logLevelList.selectedIndex = index;
+          break;
+        }
+      }
+    }
+  }
+};
+
+
+/**
+ * @param {!Object.<string, string>} params
+ * @private
+ */
+shakaDemo.postBrowserCheckParams_ = function(params) {
+  // If a custom asset was given in the URL, select it now.
+  if ('asset' in params) {
+    var assetList = document.getElementById('assetList');
+    var assetUri = params['asset'];
+    var isDefault = false;
+    // Check all options except the last, which is 'custom asset'.
+    for (var index = 0; index < assetList.options.length - 1; index++) {
+      if (assetList[index].asset &&
+          assetList[index].asset.manifestUri == assetUri) {
+        assetList.selectedIndex = index;
+        isDefault = true;
+        break;
+      }
+    }
+    if (isDefault) {
+      // Clear the custom fields.
+      document.getElementById('manifestInput').value = '';
+      document.getElementById('licenseServerInput').value = '';
+    } else {
+      // It was a custom asset, so put it into the custom field.
+      assetList.selectedIndex = assetList.options.length - 1;
+      var customAsset = document.getElementById('customAsset');
+      customAsset.style.display = 'block';
+    }
+  }
+
+  if ('noadaptation' in params) {
+    var enableAdaptation = document.getElementById('enableAdaptation');
+    enableAdaptation.checked = false;
+    // Call onAdaptationChange_ manually, because setting checked
+    // programatically doesn't fire a 'change' event.
+    var fakeEvent = /** @type {!Event} */({target: enableAdaptation});
+    shakaDemo.onAdaptationChange_(fakeEvent);
+  }
+
+  if ('trickplay' in params) {
+    var showTrickPlay = document.getElementById('showTrickPlay');
+    showTrickPlay.checked = true;
+    // Call onTrickPlayChange_ manually, because setting checked
+    // programatically doesn't fire a 'change' event.
+    var fakeEvent = /** @type {!Event} */({target: showTrickPlay});
+    shakaDemo.onTrickPlayChange_(fakeEvent);
+  }
+
+  // Allow the hash to be changed, and give it an initial change.
+  shakaDemo.hashCanChange_ = true;
+  shakaDemo.hashShouldChange_();
+
+  if ('noinput' in params || 'play' in params) {
+    shakaDemo.load();
+  }
+};
+
+
+/** @private */
+shakaDemo.hashShouldChange_ = function() {
+  if (!shakaDemo.hashCanChange_)
+    return;
+
+  var params = [];
+
+  // Save the current asset.
+  var assetUri;
+  var licenseServerUri;
+  if (shakaDemo.player_) {
+    assetUri = shakaDemo.player_.getManifestUri();
+    var drmInfo = shakaDemo.player_.drmInfo();
+    if (drmInfo)
+      licenseServerUri = drmInfo.licenseServerUri;
+  }
+  var assetList = document.getElementById('assetList');
+  if (assetUri) {
+    // Store the currently playing asset URI.
+    params.push('asset=' + assetUri);
+
+    // Is the asset a default asset?
+    var isDefault = false;
+    // Check all options except the last, which is 'custom asset'.
+    for (var index = 0; index < assetList.options.length - 1; index++) {
+      if (assetList[index].asset.manifestUri == assetUri) {
+        isDefault = true;
+        break;
+      }
+    }
+
+    // If it's a custom asset we should store whatever the license
+    // server URI is.
+    if (!isDefault && licenseServerUri) {
+      params.push('license=' + licenseServerUri);
+    }
+  } else {
+    if (assetList.selectedIndex == assetList.length - 1) {
+      // It's a custom asset.
+      if (document.getElementById('manifestInput').value) {
+        params.push('asset=' + document.getElementById('manifestInput').value);
+      }
+      if (document.getElementById('licenseServerInput').value) {
+        params.push('license=' +
+            document.getElementById('licenseServerInput').value);
+      }
+    } else {
+      // It's a default asset.
+      params.push('asset=' +
+          assetList[assetList.selectedIndex].asset.manifestUri);
+    }
+  }
+
+  // Save config panel state.
+  var audioLang = document.getElementById('preferredAudioLanguage').value;
+  var textLang = document.getElementById('preferredTextLanguage').value;
+  if (textLang != audioLang) {
+    params.push('audiolang=' + audioLang);
+    params.push('textlang=' + textLang);
+  } else {
+    params.push('lang=' + audioLang);
+  }
+  if (document.getElementById('logToScreen').checked) {
+    params.push('logtoscreen');
+  }
+  if (!document.getElementById('enableAdaptation').checked) {
+    params.push('noadaptation');
+  }
+  if (document.getElementById('showTrickPlay').checked) {
+    params.push('trickplay');
+  }
+  if (shaka.log) {
+    var logLevelList = document.getElementById('logLevelList');
+    var logLevel = logLevelList[logLevelList.selectedIndex].value;
+    if (logLevel != 'info') {
+      params.push(logLevel);
+    }
+  }
+  if (document.getElementById('enableAutoplay').checked) {
+    params.push('play');
+  }
+  if ('noinput' in shakaDemo.getParams_()) {
+    params.push('noinput');
+  }
+
+  location.hash = '#' + params.join(';');
+
+  // If search is already blank, setting it triggers a navigation and reloads
+  // the page.  Only blank out the search if we have just upgraded from search
+  // parameters to hash parameters.
+  if (location.search) {
+    location.search = '';
+  }
+};
+
+
+/**
+  * @param {!Event} event
+  * @private
+  */
+shakaDemo.onFocus_ = function(event) {
+  if (shakaDemo.lastMousePressTime_ > Date.now() - 10) {
+    // We don't want control elements to stay selected when clicked on
+    // because the selection borders are ugly and should only be shown
+    // when actually necessary (i.e. keyboard navigation).
+
+    if (document.activeElement.type != 'text') {
+      document.activeElement.blur();
+    }
+  }
+};
+
+
+/**
+  * @param {!Event} event
+  * @private
+  */
+shakaDemo.onMouseDown_ = function(event) {
+  shakaDemo.lastMousePressTime_ = Date.now();
+
+  if (document.activeElement) {
+    // There's something selected already, perhaps due to
+    // switching from keyboard controls to mouse controls.
+    // Un-select that thing.
+    // Otherwise, clicking on a focused element won't un-focus
+    // it, since clicking on a focused element doesn't issue a
+    // focus event.
+    document.activeElement.blur();
   }
 };
 
