@@ -85,6 +85,8 @@ shakaDemo.setupAssets_ = function() {
 
   document.getElementById('loadButton').addEventListener(
       'click', shakaDemo.load);
+    document.getElementById('unloadButton').addEventListener(
+        'click', shakaDemo.unload);
   document.getElementById('licenseServerInput').addEventListener(
       'keyup', shakaDemo.onAssetKeyUp_);
   document.getElementById('manifestInput').addEventListener(
@@ -202,4 +204,9 @@ shakaDemo.load = function() {
   // event.  This seems to work only because Shaka Player has already created a
   // MediaSource object and set video.src.
   shakaDemo.video_.play();
+};
+
+
+shakaDemo.unload = function() {
+  shakaDemo.player_.unload();
 };
