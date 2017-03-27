@@ -99,8 +99,8 @@ shakaDemo.setupAssets_ = function() {
 
   document.getElementById('loadButton').addEventListener(
       'click', shakaDemo.load);
-    document.getElementById('unloadButton').addEventListener(
-        'click', shakaDemo.unload);
+  document.getElementById('unloadButton').addEventListener(
+      'click', shakaDemo.unload);
   document.getElementById('licenseServerInput').addEventListener(
       'keyup', shakaDemo.onAssetKeyUp_);
   document.getElementById('manifestInput').addEventListener(
@@ -230,6 +230,10 @@ shakaDemo.load = function() {
 };
 
 
+/**
+ * Unloads the current stream, so that the browser gets less
+ * busy while troubleshooting.
+ */
 shakaDemo.unload = function() {
   shakaDemo.player_.unload();
 };
