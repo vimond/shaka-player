@@ -19,6 +19,7 @@ goog.provide('shaka.test.FakeAbrManager');
 goog.provide('shaka.test.FakeDrmEngine');
 goog.provide('shaka.test.FakeManifestParser');
 goog.provide('shaka.test.FakeStreamingEngine');
+goog.provide('shaka.test.FakeVideo');
 
 
 
@@ -88,6 +89,7 @@ shaka.test.FakeAbrManager.prototype.setRestrictions = function() {};
 /** @override */
 shaka.test.FakeAbrManager.prototype.chooseStreams = function(
     mediaTypesToUpdate) {
+  var ContentType = shaka.util.ManifestParserUtils.ContentType;
   var ret = {};
   var variant = this.variants[this.chooseIndex];
 
@@ -95,14 +97,14 @@ shaka.test.FakeAbrManager.prototype.chooseStreams = function(
   if (this.textStreams.length > this.chooseIndex)
     textStream = this.textStreams[this.chooseIndex];
 
-  if (mediaTypesToUpdate.indexOf('audio') > -1 ||
-      mediaTypesToUpdate.indexOf('video') > -1) {
-    if (variant.audio) ret['audio'] = variant.audio;
-    if (variant.video) ret['video'] = variant.video;
+  if (mediaTypesToUpdate.indexOf(ContentType.AUDIO) > -1 ||
+      mediaTypesToUpdate.indexOf(ContentType.VIDEO) > -1) {
+    if (variant.audio) ret[ContentType.AUDIO] = variant.audio;
+    if (variant.video) ret[ContentType.VIDEO] = variant.video;
   }
 
-  if (mediaTypesToUpdate.indexOf('text') > -1 && textStream)
-    ret['text'] = textStream;
+  if (mediaTypesToUpdate.indexOf(ContentType.TEXT) > -1 && textStream)
+    ret[ContentType.TEXT] = textStream;
 
   return ret;
 };
@@ -188,18 +190,19 @@ shaka.test.FakeDrmEngine.prototype.setSessionIds;
  * @return {!Object}
  */
 shaka.test.FakeStreamingEngine = function(period) {
+  var ContentType = shaka.util.ManifestParserUtils.ContentType;
   var resolve = Promise.resolve.bind(Promise);
   var activeStreams = {};
   if (period.variants.length) {
     var variant = period.variants[0];
     if (variant.audio)
-      activeStreams['audio'] = variant.audio;
+      activeStreams[ContentType.AUDIO] = variant.audio;
     if (variant.video)
-      activeStreams['video'] = variant.video;
+      activeStreams[ContentType.VIDEO] = variant.video;
   }
 
   if (period.textStreams.length)
-    activeStreams['text'] = period.textStreams[0];
+    activeStreams[ContentType.TEXT] = period.textStreams[0];
 
   var ret = jasmine.createSpyObj('fakeStreamingEngine', [
     'destroy', 'configure', 'init', 'getCurrentPeriod', 'getActiveStreams',
@@ -236,6 +239,7 @@ shaka.test.FakeManifestParser = function(manifest) {
   spyOn(this, 'start').and.callThrough();
   spyOn(this, 'stop').and.callThrough();
   spyOn(this, 'configure');
+  spyOn(this, 'update');
 };
 
 
@@ -252,28 +256,50 @@ shaka.test.FakeManifestParser.prototype.stop = function() {
 
 
 /** @override */
+shaka.test.FakeManifestParser.prototype.update = function() {};
+
+
+/** @override */
 shaka.test.FakeManifestParser.prototype.configure = function() {};
+
 
 
 /**
  * Creates a fake video element.
  * @param {number=} opt_currentTime
- * @return {!HTMLVideoElement}
- * @suppress {invalidCasts}
+ *
+ * @constructor
+ * @struct
+ * @extends {HTMLVideoElement}
+ * @return {!Object}
  */
-function createMockVideo(opt_currentTime) {
+shaka.test.FakeVideo = function(opt_currentTime) {
   var video = {
+    currentTime: opt_currentTime || 0,
+    readyState: 0,
+    playbackRate: 1,
+    volume: 1,
+    muted: false,
+    loop: false,
+    autoplay: false,
+    paused: false,
+    buffered: null,
     src: '',
     textTracks: [],
-    currentTime: opt_currentTime || 0,
+
     addTextTrack: jasmine.createSpy('addTextTrack'),
+    setMediaKeys: jasmine.createSpy('createMediaKeys'),
     addEventListener: jasmine.createSpy('addEventListener'),
     removeEventListener: jasmine.createSpy('removeEventListener'),
     removeAttribute: jasmine.createSpy('removeAttribute'),
     load: jasmine.createSpy('load'),
+    play: jasmine.createSpy('play'),
+    pause: jasmine.createSpy('pause'),
     dispatchEvent: jasmine.createSpy('dispatchEvent'),
+
     on: {}  // event listeners
   };
+  video.setMediaKeys.and.returnValue(Promise.resolve());
   video.addTextTrack.and.callFake(function(kind, id) {
     // TODO: mock TextTrack, if/when Player starts directly accessing it.
     var track = {};
@@ -283,5 +309,31 @@ function createMockVideo(opt_currentTime) {
   video.addEventListener.and.callFake(function(name, callback) {
     video.on[name] = callback;
   });
-  return /** @type {!HTMLVideoElement} */ (video);
+
+  return video;
+};
+
+
+/** @const {!Object.<string, !Function>} */
+shaka.test.FakeVideo.prototype.on;
+
+
+/**
+ * Creates a fake buffered ranges object.
+ *
+ * @param {!Array.<{start: number, end: number}>} ranges
+ * @return {!TimeRanges}
+ */
+function createFakeBuffered(ranges) {
+  return /** @type {!TimeRanges} */({
+    length: ranges.length,
+    start: function(i) {
+      if (i >= 0 && i < ranges.length) return ranges[i].start;
+      throw new Error('Unexpected index');
+    },
+    end: function(i) {
+      if (i >= 0 && i < ranges.length) return ranges[i].end;
+      throw new Error('Unexpected index');
+    }
+  });
 }

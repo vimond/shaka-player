@@ -135,7 +135,8 @@ shakaExtern.Stats;
  *   height: ?number,
  *   frameRate: ?number,
  *   mimeType: ?string,
- *   codecs: ?string
+ *   codecs: ?string,
+ *   primary: boolean
  * }}
  *
  * @description
@@ -171,6 +172,12 @@ shakaExtern.Stats;
  *   The MIME type of the content provided in the manifest.
  * @property {?string} codecs
  *   The audio/video codecs string provided in the manifest, if present.
+ * @property {boolean} primary
+ *   True indicates that this in the primary language for the content.
+ *   This flag is based on signals from the manifest.
+ *   This can be a useful hint about which language should be the default, and
+ *   indicates which track Shaka will use when the user's language preference
+ *   cannot be satisfied.
  * @exportDoc
  */
 shakaExtern.Track;
@@ -424,14 +431,32 @@ shakaExtern.DashManifestConfiguration;
 
 /**
  * @typedef {{
+ *   defaultTimeOffset: number
+ * }}
+ *
+ * @property {number} defaultTimeOffset
+ *   Default time offset (in seconds) for hls content used when no offset
+ *   is specified by the manifest. Defaults to 0 if not provided.
+ *   NOTE: Default time offset for Apple encoded content is 10 seconds.
+ *
+ * @exportDoc
+ */
+shakaExtern.HlsManifestConfiguration;
+
+
+/**
+ * @typedef {{
  *   retryParameters: shakaExtern.RetryParameters,
- *   dash: shakaExtern.DashManifestConfiguration
+ *   dash: shakaExtern.DashManifestConfiguration,
+ *   hls: shakaExtern.HlsManifestConfiguration
  * }}
  *
  * @property {shakaExtern.RetryParameters} retryParameters
  *   Retry parameters for manifest requests.
  * @property {shakaExtern.DashManifestConfiguration} dash
  *   Advanced parameters used by the DASH manifest parser.
+ * @property {shakaExtern.HlsManifestConfiguration} hls
+ *   Advanced parameters used by the HLS manifest parser.
  *
  * @exportDoc
  */
