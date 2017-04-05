@@ -52,6 +52,10 @@ manifestModifier: {
 shaka.vimond.dash.ManifestTextPreprocessor.prototype.process = function(manifest) {
     if (typeof manifest === 'string' && this.modificationSetup_) {
         var replacements = this.modificationSetup_.replacements;
+        //if (window.replacement) {
+        //    replacements = replacements || [];
+        //    replacements.push(window.replacement);
+        //}
         if (replacements) {
             manifest = replacements.reduce(function (prevData, replaceEntry) {
                 var match = replaceEntry.match instanceof RegExp ? replaceEntry.match : new RegExp(replaceEntry.match.toString(), replaceEntry.options);
