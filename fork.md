@@ -26,12 +26,14 @@ Following, the customisations needing attention from Shaka player consumers/inte
 
 ### Build scripts for including customizations
 
-Variations on build.sh and all.sh are added, [build-vup-debug](https://github.com/vimond/shaka-player/blob/manifestmodifier/build/build-vup-debug.sh),  [lib-vup-debug.sh](https://github.com/vimond/shaka-player/blob/manifestmodifier/build/lib-vup-debug.sh), and [all-vup-debug.sh](https://github.com/vimond/shaka-player/blob/manifestmodifier/build/all-vup-debug.sh).
+Variations on build.sh and all.sh are added, [build-vup-debug](https://github.com/vimond/shaka-player/blob/manifestmodifier/build/build-vup-debug.sh),  [lib-vup-debug.sh](https://github.com/vimond/shaka-player/blob/manifestmodifier/build/lib-vup-debug.sh), and [all-vup-debug.sh](https://github.com/vimond/shaka-player/blob/manifestmodifier/build/all-vup.sh).
 
 For including the Vimond extensions, use
 ```Shell
-./build/all-vup-debug.sh
+./build/all-vup.sh
 ```
+This builds both compiled, debug, and commonjs versions.
+
 
 ### DASH manifest preprocessor
 

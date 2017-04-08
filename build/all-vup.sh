@@ -20,4 +20,5 @@ set -e
 
 "$dir"/build/gendeps.sh
 "$dir"/build/build-vup-debug.sh
+"$dir"/build/build-vup-commonjs.sh
 "$dir"/build/lint.sh
