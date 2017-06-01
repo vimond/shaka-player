@@ -24,8 +24,14 @@ describe('Player', function() {
   var manifest;
   var onError;
   var player;
+
   var networkingEngine;
   var streamingEngine;
+  var drmEngine;
+  var playhead;
+  var playheadObserver;
+  var mediaSourceEngine;
+
   var video;
   var ContentType;
 
@@ -58,23 +64,19 @@ describe('Player', function() {
     function dependencyInjector(player) {
       networkingEngine =
           new shaka.test.FakeNetworkingEngine({}, new ArrayBuffer(0));
+      drmEngine = new shaka.test.FakeDrmEngine();
+      playhead = new shaka.test.FakePlayhead();
+      playheadObserver = new shaka.test.FakePlayheadObserver();
+      mediaSourceEngine = {
+        destroy: jasmine.createSpy('destroy').and.returnValue(Promise.resolve())
+      };
 
-      player.createDrmEngine = function() {
-        return new shaka.test.FakeDrmEngine();
-      };
-      player.createNetworkingEngine = function() {
-        return networkingEngine;
-      };
-      player.createPlayhead = function() {
-        return new shaka.test.FakePlayhead();
-      };
-      player.createPlayheadObserver = function() {
-        return new shaka.test.FakePlayheadObserver();
-      };
+      player.createDrmEngine = function() { return drmEngine; };
+      player.createNetworkingEngine = function() { return networkingEngine; };
+      player.createPlayhead = function() { return playhead; };
+      player.createPlayheadObserver = function() { return playheadObserver; };
       player.createMediaSource = function() { return Promise.resolve(); };
-      player.createMediaSourceEngine = function() {
-        return {destroy: function() {}};
-      };
+      player.createMediaSourceEngine = function() { return mediaSourceEngine; };
       player.createStreamingEngine = function() {
         // This captures the variable |manifest| so this should only be used
         // after the manifest has been set.
@@ -112,6 +114,25 @@ describe('Player', function() {
   afterAll(function() {
     shaka.log.error = originalLogError;
     shaka.log.warning = originalLogWarn;
+  });
+
+  describe('destroy', function() {
+    it('cleans up all dependencies', function(done) {
+      goog.asserts.assert(manifest, 'Manifest should be non-null');
+      var parser = new shaka.test.FakeManifestParser(manifest);
+      var factory = function() { return parser; };
+
+      player.load('', 0, factory).then(function() {
+        return player.destroy();
+      }).then(function() {
+        expect(networkingEngine.destroy).toHaveBeenCalled();
+        expect(drmEngine.destroy).toHaveBeenCalled();
+        expect(playhead.destroy).toHaveBeenCalled();
+        expect(playheadObserver.destroy).toHaveBeenCalled();
+        expect(mediaSourceEngine.destroy).toHaveBeenCalled();
+        expect(streamingEngine.destroy).toHaveBeenCalled();
+      }).catch(fail).then(done);
+    });
   });
 
   describe('load/unload', function() {
@@ -621,6 +642,51 @@ describe('Player', function() {
       expect(newConfig.manifest.dash.customScheme).not.toBe(badCustomScheme2);
       expect(logWarnSpy).not.toHaveBeenCalled();
     });
+
+    // Regression test for https://github.com/google/shaka-player/issues/784
+    it('does not throw when overwriting serverCertificate', function() {
+      player.configure({
+        drm: {
+          advanced: {
+            'com.widevine.alpha': {
+              serverCertificate: new Uint8Array(1)
+            }
+          }
+        }
+      });
+
+      player.configure({
+        drm: {
+          advanced: {
+            'com.widevine.alpha': {
+              serverCertificate: new Uint8Array(2)
+            }
+          }
+        }
+      });
+    });
+
+    it('configures play and seek range for VOD', function(done) {
+      player.configure({playRangeStart: 5, playRangeEnd: 10});
+      var timeline = new shaka.media.PresentationTimeline(300, 0);
+      timeline.setStatic(true);
+      manifest = new shaka.test.ManifestGenerator()
+          .setTimeline(timeline)
+          .addPeriod(0)
+            .addVariant(0)
+            .addVideo(1)
+          .build();
+      goog.asserts.assert(manifest, 'manifest must be non-null');
+      var parser = new shaka.test.FakeManifestParser(manifest);
+      var factory = function() { return parser; };
+      player.load('', 0, factory).then(function() {
+        var seekRange = player.seekRange();
+        expect(seekRange.start).toBe(5);
+        expect(seekRange.end).toBe(10);
+      })
+      .catch(fail)
+      .then(done);
+    });
   });
 
   describe('AbrManager', function() {
@@ -724,10 +790,12 @@ describe('Player', function() {
             .addVideo(5).bandwidth(200).size(200, 400).frameRate(24)
           .addTextStream(6)
             .language('es')
+            .label('Spanish')
             .bandwidth(100).kind('caption')
                          .mime('text/vtt')
           .addTextStream(7)
             .language('en')
+            .label('English')
             .bandwidth(100).kind('caption')
                          .mime('application/ttml+xml')
           // Both text tracks should remain, even with different MIME types.
@@ -740,13 +808,17 @@ describe('Player', function() {
           type: 'variant',
           bandwidth: 200,
           language: 'en',
+          label: null,
           kind: null,
           width: 100,
           height: 200,
           frameRate: 1000000 / 42000,
           mimeType: 'video/mp4',
           codecs: 'avc1.4d401f, mp4a.40.2',
-          primary: false
+          audioCodec: 'mp4a.40.2',
+          videoCodec: 'avc1.4d401f',
+          primary: false,
+          roles: []
         },
         {
           id: 2,
@@ -754,13 +826,17 @@ describe('Player', function() {
           type: 'variant',
           bandwidth: 300,
           language: 'en',
+          label: null,
           kind: null,
           width: 200,
           height: 400,
           frameRate: 24,
           mimeType: 'video/mp4',
           codecs: 'avc1.4d401f, mp4a.40.2',
-          primary: false
+          audioCodec: 'mp4a.40.2',
+          videoCodec: 'avc1.4d401f',
+          primary: false,
+          roles: []
         },
         {
           id: 3,
@@ -768,13 +844,17 @@ describe('Player', function() {
           type: 'variant',
           bandwidth: 200,
           language: 'en',
+          label: null,
           kind: null,
           width: 100,
           height: 200,
           frameRate: 1000000 / 42000,
           mimeType: 'video/mp4',
           codecs: 'avc1.4d401f, mp4a.40.2',
-          primary: false
+          audioCodec: 'mp4a.40.2',
+          videoCodec: 'avc1.4d401f',
+          primary: false,
+          roles: []
         },
         {
           id: 4,
@@ -782,13 +862,17 @@ describe('Player', function() {
           type: 'variant',
           bandwidth: 300,
           language: 'en',
+          label: null,
           kind: null,
           width: 200,
           height: 400,
           frameRate: 24,
           mimeType: 'video/mp4',
           codecs: 'avc1.4d401f, mp4a.40.2',
-          primary: false
+          audioCodec: 'mp4a.40.2',
+          videoCodec: 'avc1.4d401f',
+          primary: false,
+          roles: []
         },
         {
           id: 5,
@@ -796,13 +880,17 @@ describe('Player', function() {
           type: 'variant',
           bandwidth: 300,
           language: 'es',
+          label: null,
           kind: null,
           width: 200,
           height: 400,
           frameRate: 24,
           mimeType: 'video/mp4',
           codecs: 'avc1.4d401f, mp4a.40.2',
-          primary: false
+          audioCodec: 'mp4a.40.2',
+          videoCodec: 'avc1.4d401f',
+          primary: false,
+          roles: []
         }
       ];
 
@@ -812,20 +900,28 @@ describe('Player', function() {
           active: true,
           type: ContentType.TEXT,
           language: 'es',
+          label: 'Spanish',
           kind: 'caption',
           mimeType: 'text/vtt',
           codecs: null,
-          primary: false
+          audioCodec: null,
+          videoCodec: null,
+          primary: false,
+          roles: []
         },
         {
           id: 7,
           active: false,
           type: ContentType.TEXT,
           language: 'en',
+          label: 'English',
           kind: 'caption',
           mimeType: 'application/ttml+xml',
           codecs: null,
-          primary: false
+          audioCodec: null,
+          videoCodec: null,
+          primary: false,
+          roles: []
         }
       ];
     });
@@ -1701,6 +1797,32 @@ describe('Player', function() {
       }).then(done);
     });
 
+    it('removes if we don\'t have the required key', function(done) {
+      manifest = new shaka.test.ManifestGenerator()
+              .addPeriod(0)
+                .addVariant(0)
+                  .addVideo(1).keyId('abc')
+                .addVariant(2)
+                  .addVideo(3)
+              .build();
+
+      parser = new shaka.test.FakeManifestParser(manifest);
+      factory = function() { return parser; };
+      player.load('', 0, factory).then(function() {
+        // "initialize" the current period.
+        chooseStreams();
+        canSwitch();
+      }).then(function() {
+        expect(player.getVariantTracks().length).toBe(2);
+
+        onKeyStatus({});
+
+        var tracks = player.getVariantTracks();
+        expect(tracks.length).toBe(1);
+        expect(tracks[0].id).toBe(2);
+      }).catch(fail).then(done);
+    });
+
     it('removes if key system does not support codec', function(done) {
       // Should already be removed from filterPeriod_
       manifest = new shaka.test.ManifestGenerator()
@@ -1892,6 +2014,7 @@ describe('Player', function() {
           shaka.test.Util.expectToEqualError(
               error,
               new shaka.util.Error(
+                  shaka.util.Error.Severity.CRITICAL,
                   shaka.util.Error.Category.MANIFEST,
                   shaka.util.Error.Code.RESTRICTIONS_CANNOT_BE_MET));
         });
@@ -1955,6 +2078,7 @@ describe('Player', function() {
       shaka.test.Util.expectToEqualError(
           error,
           new shaka.util.Error(
+              shaka.util.Error.Severity.CRITICAL,
               shaka.util.Error.Category.MANIFEST,
               shaka.util.Error.Code.NO_PERIODS));
     }).then(done);
