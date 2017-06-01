@@ -140,14 +140,16 @@ shaka.test.FakeDrmEngine = function() {
   var drmInfo = null;
 
   var ret = jasmine.createSpyObj('FakeDrmEngine', [
-    'destroy', 'configure', 'init', 'attach', 'initialized', 'keySystem',
-    'getSupportedTypes', 'getDrmInfo', 'getSessionIds', 'isSupportedByKeySystem'
+    'attach', 'configure', 'destroy', 'getDrmInfo', 'getExpiration',
+    'getSessionIds', 'getSupportedTypes', 'init', 'initialized',
+    'isSupportedByKeySystem', 'keySystem'
   ]);
+  ret.attach.and.callFake(resolve);
   ret.destroy.and.callFake(resolve);
   ret.init.and.callFake(resolve);
-  ret.attach.and.callFake(resolve);
   ret.initialized.and.returnValue(true);
   ret.keySystem.and.returnValue('com.example.fake');
+  ret.getExpiration.and.returnValue(Infinity);
   // See shaka.test.ManifestGenerator.protototype.createStream.
   ret.getSupportedTypes.and.returnValue(
       ['video/mp4; codecs="avc1.4d401f"']);
@@ -172,6 +174,10 @@ shaka.test.FakeDrmEngine.prototype.init;
 
 /** @type {jasmine.Spy} */
 shaka.test.FakeDrmEngine.prototype.attach;
+
+
+/** @type {jasmine.Spy} */
+shaka.test.FakeDrmEngine.prototype.getExpiration;
 
 
 /** @param {?shakaExtern.DrmInfo} info */
@@ -260,6 +266,10 @@ shaka.test.FakeManifestParser.prototype.stop = function() {
 
 /** @override */
 shaka.test.FakeManifestParser.prototype.update = function() {};
+
+
+/** @override */
+shaka.test.FakeManifestParser.prototype.onExpirationUpdated = function() {};
 
 
 /** @override */
@@ -370,7 +380,6 @@ shaka.test.FakePresentationTimeline = function() {
     notifyMaxSegmentDuration: jasmine.createSpy('notifyMaxSegmentDuration'),
     isLive: jasmine.createSpy('isLive'),
     isInProgress: jasmine.createSpy('isInProgress'),
-    getEarliestStart: jasmine.createSpy('getEarliestStart'),
     getSegmentAvailabilityStart: getStart,
     getSafeAvailabilityStart: getSafeStart,
     getSegmentAvailabilityEnd: jasmine.createSpy('getSegmentAvailabilityEnd'),
@@ -417,10 +426,6 @@ shaka.test.FakePresentationTimeline.prototype.isLive;
 
 /** @type {jasmine.Spy} */
 shaka.test.FakePresentationTimeline.prototype.isInProgress;
-
-
-/** @type {jasmine.Spy} */
-shaka.test.FakePresentationTimeline.prototype.getEarliestStart;
 
 
 /** @type {jasmine.Spy} */
@@ -472,6 +477,7 @@ shaka.test.FakePlayhead = function() {
  */
 shaka.test.FakePlayheadObserver = function() {
   return {
+    destroy: jasmine.createSpy('destroy').and.returnValue(Promise.resolve()),
     seeked: jasmine.createSpy('seeked'),
     setRebufferingGoal: jasmine.createSpy('setRebufferingGoal'),
     addTimelineRegion: jasmine.createSpy('addTimelineRegion')

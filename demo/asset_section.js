@@ -193,10 +193,25 @@ shakaDemo.load = function() {
 
   var asset = shakaDemo.preparePlayer_(option.asset);
 
+  // Revert to default poster while we load.
+  shakaDemo.localVideo_.poster = shakaDemo.mainPoster_;
+
   // Load the manifest.
   player.load(asset.manifestUri).then(function() {
     // Update control state in case autoplay is disabled.
     shakaDemo.controls_.loadComplete();
+
+    shakaDemo.hashShouldChange_();
+
+    // Audio-only tracks have no width/height.
+    var videoTracks = player.getVariantTracks().filter(function(t) {
+      return t.videoCodec;
+    });
+
+    // Set a different poster for audio-only assets.
+    if (videoTracks.length == 0) {
+      shakaDemo.localVideo_.poster = shakaDemo.audioOnlyPoster_;
+    }
 
     // Disallow casting of offline content.
     var isOffline = asset.manifestUri.indexOf('offline:') == 0;
