@@ -104,7 +104,7 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
     'presentationTimeOffset': function processPresentationTimeOffset(state, match) {
         var presentationTimeOffset;
         try {
-            presentationTimeOffset = parseInt(getAttributeValue(match), 10);
+            presentationTimeOffset = shaka.vimond.Integer.from(getAttributeValue(match) || 0);
         } catch(e) {
             shaka.log.warning('Parse presentationTimeOffset failed.', e);
         }
@@ -123,8 +123,13 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
                 originalScaledNetOffset = originalScaledOffset.subtract(state.currentPresentationTimeOffset || 0), // The scaled time from availabilityst
                 startTimeDifferenceSeconds = state.originalAvailabilityStartTimeSeconds - state.adjustedAvailabilityStartTimeSeconds,
                 adjustedScaledStartOffset = originalScaledNetOffset.add(startTimeDifferenceSeconds * state.currentTimescale).toJSNumber(),
-                timestampOffset = state.adjustedAvailabilityStartTimeSeconds + shaka.vimond.Integer.from(state.currentPresentationTimeOffset).divide(state.currentTimescale).toJSNumber() - state.originalAvailabilityStartTimeSeconds;
+                timestampOffset = state.adjustedAvailabilityStartTimeSeconds + state.currentPresentationTimeOffset.divide(state.currentTimescale).toJSNumber() - state.originalAvailabilityStartTimeSeconds;
 
+            
+            console.log('originalScaledStartOffsetStr', originalScaledStartOffsetStr);
+            console.log('originalScaledStartOffsetStr', originalScaledStartOffsetStr);
+            console.log('originalScaledNetOffset', originalScaledNetOffset.toString());
+            
             /*
             window.presentationTimeOffset = shaka.vimond.Integer.create(state.currentPresentationTimeOffset).divide(state.currentTimescale).toJSNumber();
             window.originalStartOffset = shaka.vimond.Integer.create(originalScaledOffset).divide(state.currentTimescale).toJSNumber();

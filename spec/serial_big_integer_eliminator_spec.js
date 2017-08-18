@@ -8,7 +8,7 @@ describe('SerialBigIntegerEliminator', function() {
         '<Period start="PT0S">\n' +
         '    <AdaptationSet id="1" group="1" profiles="ccff" bitstreamSwitching="false" segmentAlignment="true" contentType="video" mimeType="video/mp4" codecs="avc1.640029" maxWidth="1280" maxHeight="720" startWithSAP="1">\n' +
         '        <InbandEventStream schemeIdUri="urn:mpeg:dash:event:2012" value="1"/>\n' +
-        '        <SegmentTemplate timescale="10000000" presentationTimeOffset="14653967524906444" media="QualityLevels($Bandwidth$)/Fragments(video=$Time$,format=mpd-time-csf)" initialization="QualityLevels($Bandwidth$)/Fragments(video=i,format=mpd-time-csf)">\n' +
+        '        <SegmentTemplate timescale="10000000" presentationTimeOffset="14653967524906445" media="QualityLevels($Bandwidth$)/Fragments(video=$Time$,format=mpd-time-csf)" initialization="QualityLevels($Bandwidth$)/Fragments(video=i,format=mpd-time-csf)">\n' +
         '            <SegmentTimeline>\n' +
         '                <S t="14654880262200001" d="19200000" r="3715"/>\n' +
         '            </SegmentTimeline>\n' +
@@ -18,7 +18,7 @@ describe('SerialBigIntegerEliminator', function() {
         '    </AdaptationSet>\n' +
         '    <AdaptationSet id="2" group="5" profiles="ccff" bitstreamSwitching="false" segmentAlignment="true" contentType="audio" mimeType="audio/mp4" codecs="mp4a.40.2">\n' +
         '        <InbandEventStream schemeIdUri="urn:mpeg:dash:event:2012" value="1"/>\n' +
-        '        <SegmentTemplate timescale="10000000" presentationTimeOffset="14653967524906444" media="QualityLevels($Bandwidth$)/Fragments(audio_track=$Time$,format=mpd-time-csf)" initialization="QualityLevels($Bandwidth$)/Fragments(audio_track=i,format=mpd-time-csf)">\n' +
+        '        <SegmentTemplate timescale="10000000" presentationTimeOffset="14653967524906445" media="QualityLevels($Bandwidth$)/Fragments(audio_track=$Time$,format=mpd-time-csf)" initialization="QualityLevels($Bandwidth$)/Fragments(audio_track=i,format=mpd-time-csf)">\n' +
         '            <SegmentTimeline>\n' +
         '                <S t="14654880262026667" d="19200000" r="3715"/>\n' +
         '            </SegmentTimeline>\n' +
@@ -41,7 +41,7 @@ describe('SerialBigIntegerEliminator', function() {
         timestampOffsetMatch = / _timestampOffset="(-)?([0-9]*?)"/g,
         adjustedStartOffsetMatch = / t="([0-9]*?)"/g,
         originalStartOffsets = [' _t="14654880262200001"', ' _t="14654880262026667"'],
-        adjustedStartOffsets = [' t="1836247293557"', ' t="1836247120223"'],
+        adjustedStartOffsets = [' t="1836247293556"', ' t="1836247120222"'],
         timestampOffsets = [' _timestampOffset="1465304401"', ' _timestampOffset="1465304401"'];
         timestampOffsets = [' _timestampOffset="1465304401"', ' _timestampOffset="1465304401"'];
     
