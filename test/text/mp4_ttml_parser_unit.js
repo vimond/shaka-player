@@ -15,46 +15,65 @@
  * limitations under the License.
  */
 
-goog.require('shaka.test.Util');
-
 describe('Mp4TtmlParser', function() {
+  /** @const */
   var ttmlInitSegmentUri = '/base/test/test/assets/ttml-init.mp4';
+  /** @const */
   var ttmlSegmentUri = '/base/test/test/assets/ttml-segment.mp4';
+  /** @const */
+  var ttmlSegmentMultipleMDATUri =
+      '/base/test/test/assets/ttml-segment-multiplemdat.mp4';
+  /** @const */
   var audioInitSegmentUri = '/base/test/test/assets/sintel-audio-init.mp4';
 
+  /** @type {!ArrayBuffer} */
   var ttmlInitSegment;
+  /** @type {!Uint8Array} */
   var ttmlSegment;
+  /** @type {!Uint8Array} */
+  var ttmlSegmentMultipleMDAT;
+  /** @type {!ArrayBuffer} */
   var audioInitSegment;
 
   beforeAll(function(done) {
     Promise.all([
       shaka.test.Util.fetch(ttmlInitSegmentUri),
       shaka.test.Util.fetch(ttmlSegmentUri),
+      shaka.test.Util.fetch(ttmlSegmentMultipleMDATUri),
       shaka.test.Util.fetch(audioInitSegmentUri)
     ]).then(function(responses) {
       ttmlInitSegment = responses[0];
-      ttmlSegment = responses[1];
-      audioInitSegment = responses[2];
+      ttmlSegment = new Uint8Array(responses[1]);
+      ttmlSegmentMultipleMDAT = new Uint8Array(responses[2]);
+      audioInitSegment = responses[3];
     }).catch(fail).then(done);
   });
 
   it('parses init segment', function() {
-    new shaka.media.Mp4TtmlParser().parseInit(ttmlInitSegment);
+    new shaka.text.Mp4TtmlParser().parseInit(ttmlInitSegment);
   });
 
   it('parses media segment', function() {
-    var parser = new shaka.media.Mp4TtmlParser();
+    var parser = new shaka.text.Mp4TtmlParser();
     parser.parseInit(ttmlInitSegment);
     var time = {periodStart: 0, segmentStart: 0, segmentEnd: 0 };
     var ret = parser.parseMedia(ttmlSegment, time);
-    expect(ret.length).toBeGreaterThan(0);
+    expect(ret.length).toBe(10);
+  });
+
+  it('handles media segments with multiple mdats', function() {
+    var parser = new shaka.text.Mp4TtmlParser();
+    parser.parseInit(ttmlInitSegment);
+    var time = {periodStart: 0, segmentStart: 0, segmentEnd: 0 };
+    var ret = parser.parseMedia(ttmlSegmentMultipleMDAT, time);
+    expect(ret.length).toBe(20);
   });
 
   it('accounts for offset', function() {
     var time1 = {periodStart: 0, segmentStart: 0, segmentEnd: 0 };
     var time2 = {periodStart: 7, segmentStart: 0, segmentEnd: 0 };
 
-    var parser = new shaka.media.Mp4TtmlParser();
+    var parser = new shaka.text.Mp4TtmlParser();
     parser.parseInit(ttmlInitSegment);
 
     var ret1 = parser.parseMedia(ttmlSegment, time1);
@@ -74,7 +93,7 @@ describe('Mp4TtmlParser', function() {
         shaka.util.Error.Code.INVALID_MP4_TTML);
 
     try {
-      new shaka.media.Mp4TtmlParser().parseInit(audioInitSegment);
+      new shaka.text.Mp4TtmlParser().parseInit(audioInitSegment);
       fail('Mp4 file with no ttml supported');
     } catch (e) {
       shaka.test.Util.expectToEqualError(e, error);

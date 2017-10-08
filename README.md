@@ -12,12 +12,13 @@ build and deploy is in the sources.
 
 Shaka Player supports any browser that supports the necessary web standards.
 It is actively tested with:
-  - Chrome
+  - Chrome on Linux, Mac, Windows, Android, and ChromeOS
   - Chromecast
-  - Firefox
+  - Firefox on Linux, Mac, and Windows
   - Microsoft Edge
   - IE 11
   - Safari
+  - 2017 Tizen TV
   - [Widevine][]
   - [PlayReady][]
 
@@ -41,8 +42,8 @@ Shaka Player supports:
     - clear content (all browsers)
     - protected content (depends on browser support)
 
-*Please note that Shaka Player cannot support iOS due to a lack of
-[MediaSource Extensions][] on that platform.*
+*Please note that Shaka Player cannot support iOS or IE11 on Windows 7
+due to a lack of [MediaSource Extensions][] on those platforms.*
 
 [DASH]: http://dashif.org/
 [HLS]: https://developer.apple.com/streaming/
@@ -155,4 +156,5 @@ contributors to follow.
 
 ## FAQ ##
 
-For general help and before filing any bugs, please read the [FAQ](docs/faq.md).
+For general help and before filing any bugs, please read the
+[FAQ](docs/tutorials/faq.md).

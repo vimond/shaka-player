@@ -79,11 +79,11 @@ shakaDemo.audioOnlyPoster_ =
 
 
 /**
- * The registered ID of the v2.1 Chromecast receiver demo.
+ * The registered ID of the v2.2 Chromecast receiver demo.
  * @const {string}
  * @private
  */
-shakaDemo.CC_APP_ID_ = '658CCD53';
+shakaDemo.CC_APP_ID_ = '91580C19';
 
 
 /**
@@ -108,6 +108,11 @@ shakaDemo.init = function() {
   shakaDemo.preBrowserCheckParams_(params);
 
   shaka.polyfill.installAll();
+
+  // Display uncaught exceptions.
+  window.addEventListener('error', function(event) {
+    shakaDemo.onError_(/** @type {!shaka.util.Error} */ (event.error));
+  });
 
   if (!shaka.Player.isBrowserSupported()) {
     var errorDisplayLink = document.getElementById('errorDisplayLink');
@@ -144,6 +149,31 @@ shakaDemo.init = function() {
     var errorDisplay = document.getElementById('errorDisplay');
     errorDisplay.style.display = 'block';
   } else {
+    if (navigator.serviceWorker) {
+      console.debug('Registering service worker.');
+      navigator.serviceWorker.register('service_worker.js')
+          .then(function(registration) {
+            console.debug('Service worker registered!', registration.scope);
+          }).catch(function(error) {
+            console.error('Service worker registration failed!', error);
+          });
+    }
+
+    /** @param {Event} event */
+    var offlineStatusChanged = function(event) {
+      var version = document.getElementById('version');
+      var text = version.textContent;
+      text = text.replace(' (offline)', '');
+      if (!navigator.onLine) {
+        text += ' (offline)';
+      }
+      version.textContent = text;
+      shakaDemo.computeDisabledAssets();
+    };
+    window.addEventListener('online', offlineStatusChanged);
+    window.addEventListener('offline', offlineStatusChanged);
+    offlineStatusChanged(null);
+
     shaka.Player.probeSupport().then(function(support) {
       shakaDemo.support_ = support;
 
@@ -198,6 +228,7 @@ shakaDemo.getParams_ = function() {
   // Because they are being concatenated in this order, if both an
   // URL fragment and an URL parameter of the same type are present
   // the URL fragment takes precendence.
+  /** @type {!Array.<string>} */
   var combined = fields.concat(fragments);
   var params = {};
   for (var i = 0; i < combined.length; ++i) {
@@ -213,6 +244,14 @@ shakaDemo.getParams_ = function() {
   * @private
   */
 shakaDemo.preBrowserCheckParams_ = function(params) {
+  if ('videoRobustness' in params) {
+    document.getElementById('drmSettingsVideoRobustness').value =
+        params['videoRobustness'];
+  }
+  if ('audioRobustness' in params) {
+    document.getElementById('drmSettingsAudioRobustness').value =
+        params['audioRobustness'];
+  }
   if ('lang' in params) {
     document.getElementById('preferredAudioLanguage').value = params['lang'];
     document.getElementById('preferredTextLanguage').value = params['lang'];
@@ -311,6 +350,28 @@ shakaDemo.postBrowserCheckParams_ = function(params) {
     shakaDemo.updateButtons_(/* canHide */ true);
   }
 
+  var smallGapLimit = document.getElementById('smallGapLimit');
+  smallGapLimit.placeholder = 0.5; // The default smallGapLimit.
+  if ('smallGapLimit' in params) {
+    smallGapLimit.value = params['smallGapLimit'];
+    // Call onGapInput_ manually, because setting the value
+    // programatically doesn't fire 'input' event.
+    var fakeEvent = /** @type {!Event} */({target: smallGapLimit});
+    shakaDemo.onGapInput_(fakeEvent);
+  }
+
+  var jumpLargeGaps = document.getElementById('jumpLargeGaps');
+  if ('jumpLargeGaps' in params) {
+    jumpLargeGaps.checked = true;
+    // Call onJumpLargeGapsChange_ manually, because setting checked
+    // programatically doesn't fire a 'change' event.
+    var fakeEvent = /** @type {!Event} */({target: jumpLargeGaps});
+    shakaDemo.onJumpLargeGapsChange_(fakeEvent);
+  } else {
+    jumpLargeGaps.checked =
+        shakaDemo.player_.getConfiguration().streaming.jumpLargeGaps;
+  }
+
   if ('noadaptation' in params) {
     var enableAdaptation = document.getElementById('enableAdaptation');
     enableAdaptation.checked = false;
@@ -327,6 +388,15 @@ shakaDemo.postBrowserCheckParams_ = function(params) {
     // programatically doesn't fire a 'change' event.
     var fakeEvent = /** @type {!Event} */({target: showTrickPlay});
     shakaDemo.onTrickPlayChange_(fakeEvent);
+  }
+
+  if ('nativecontrols' in params) {
+    var showNative = document.getElementById('showNative');
+    showNative.checked = true;
+    // Call onNativeChange_ manually, because setting checked
+    // programatically doesn't fire a 'change' event.
+    var fakeEvent = /** @type {!Event} */({target: showNative});
+    shakaDemo.onNativeChange_(fakeEvent);
   }
 
   // Allow the hash to be changed, and give it an initial change.
@@ -408,6 +478,12 @@ shakaDemo.hashShouldChange_ = function() {
   }
 
   // Save config panel state.
+  if (document.getElementById('smallGapLimit').value.length) {
+    params.push('smallGapLimit=' +
+        document.getElementById('smallGapLimit').value);
+  }
+  if (document.getElementById('jumpLargeGaps').checked)
+    params.push('jumpLargeGaps');
   var audioLang = document.getElementById('preferredAudioLanguage').value;
   var textLang = document.getElementById('preferredTextLanguage').value;
   if (textLang != audioLang) {
@@ -424,6 +500,9 @@ shakaDemo.hashShouldChange_ = function() {
   }
   if (document.getElementById('showTrickPlay').checked) {
     params.push('trickplay');
+  }
+  if (document.getElementById('showNative').checked) {
+    params.push('nativecontrols');
   }
   if (shaka.log) {
     var logLevelList = document.getElementById('logLevelList');
@@ -447,6 +526,19 @@ shakaDemo.hashShouldChange_ = function() {
   if ('compiled' in shakaDemo.getParams_()) {
     params.push('compiled');
   }
+  if ('debug_compiled' in shakaDemo.getParams_()) {
+    params.push('debug_compiled');
+  }
+
+  // Store values for drm configuration.
+  var videoRobustness =
+      document.getElementById('drmSettingsVideoRobustness').value;
+  if (videoRobustness)
+    params.push('videoRobustness=' + videoRobustness);
+  var audioRobustness =
+      document.getElementById('drmSettingsAudioRobustness').value;
+  if (audioRobustness)
+    params.push('audioRobustness=' + audioRobustness);
 
   var newHash = '#' + params.join(';');
   if (newHash != location.hash) {

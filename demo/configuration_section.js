@@ -29,10 +29,16 @@ var shakaDemo = shakaDemo || {};
 
 /** @private */
 shakaDemo.setupConfiguration_ = function() {
+  document.getElementById('smallGapLimit').addEventListener(
+      'input', shakaDemo.onGapInput_);
+  document.getElementById('jumpLargeGaps').addEventListener(
+      'change', shakaDemo.onJumpLargeGapsChange_);
   document.getElementById('preferredAudioLanguage').addEventListener(
-      'keyup', shakaDemo.onConfigKeyUp_);
+      'input', shakaDemo.onConfigInput_);
   document.getElementById('preferredTextLanguage').addEventListener(
-      'keyup', shakaDemo.onConfigKeyUp_);
+      'input', shakaDemo.onConfigInput_);
+  document.getElementById('showNative').addEventListener(
+      'change', shakaDemo.onNativeChange_);
   document.getElementById('showTrickPlay').addEventListener(
       'change', shakaDemo.onTrickPlayChange_);
   document.getElementById('enableAdaptation').addEventListener(
@@ -41,11 +47,38 @@ shakaDemo.setupConfiguration_ = function() {
       'change', shakaDemo.onLogLevelChange_);
   document.getElementById('enableAutoplay').addEventListener(
       'change', shakaDemo.onAutoplayChange_);
+  document.getElementById('drmSettingsVideoRobustness').addEventListener(
+      'input', shakaDemo.onDrmSettingsChange_);
+  document.getElementById('drmSettingsAudioRobustness').addEventListener(
+      'input', shakaDemo.onDrmSettingsChange_);
+
+  var robustnessSuggestions = document.getElementById('robustnessSuggestions');
+  if (shakaDemo.support_.drm['com.widevine.alpha']) {
+    var widevineSuggestions = ['SW_SECURE_CRYPTO', 'SW_SECURE_DECODE',
+      'HW_SECURE_CRYPTO', 'HW_SECURE_DECODE', 'HW_SECURE_ALL'];
+    // Add Widevine robustness suggestions if it is supported.
+    widevineSuggestions.forEach(function(suggestion) {
+      var option = document.createElement('option');
+      option.value = suggestion;
+      option.textContent = 'Widevine';
+      robustnessSuggestions.appendChild(option);
+    });
+  }
 };
 
 
 /** @private */
 shakaDemo.onAutoplayChange_ = function() {
+  // Change the hash, to mirror this.
+  shakaDemo.hashShouldChange_();
+};
+
+
+/**
+ * @param {!Event} event
+ * @private
+ */
+shakaDemo.onDrmSettingsChange_ = function(event) {
   // Change the hash, to mirror this.
   shakaDemo.hashShouldChange_();
 };
@@ -84,7 +117,37 @@ shakaDemo.onLogLevelChange_ = function(event) {
  * @param {!Event} event
  * @private
  */
-shakaDemo.onConfigKeyUp_ = function(event) {
+shakaDemo.onJumpLargeGapsChange_ = function(event) {
+  shakaDemo.player_.configure(({
+    streaming: { jumpLargeGaps: event.target.checked }
+  }));
+  // Change the hash, to mirror this.
+  shakaDemo.hashShouldChange_();
+};
+
+
+/**
+ * @param {!Event} event
+ * @private
+ */
+shakaDemo.onGapInput_ = function(event) {
+  var smallGapLimit = Number(event.target.value);
+  var useDefault = isNaN(smallGapLimit) || event.target.value.length == 0;
+  shakaDemo.player_.configure(({
+    streaming: {
+      smallGapLimit: useDefault ? undefined : smallGapLimit
+    }
+  }));
+  // Change the hash, to mirror this.
+  shakaDemo.hashShouldChange_();
+};
+
+
+/**
+ * @param {!Event} event
+ * @private
+ */
+shakaDemo.onConfigInput_ = function(event) {
   shakaDemo.player_.configure(/** @type {shakaExtern.PlayerConfiguration} */({
     preferredAudioLanguage:
         document.getElementById('preferredAudioLanguage').value,
@@ -105,6 +168,28 @@ shakaDemo.onAdaptationChange_ = function(event) {
   shakaDemo.player_.configure(/** @type {shakaExtern.PlayerConfiguration} */({
     abr: { enabled: event.target.checked }
   }));
+  // Change the hash, to mirror this.
+  shakaDemo.hashShouldChange_();
+};
+
+
+/**
+ * @param {!Event} event
+ * @private
+ */
+shakaDemo.onNativeChange_ = function(event) {
+  var showTrickPlay = document.getElementById('showTrickPlay');
+
+  if (event.target.checked) {
+    showTrickPlay.checked = false;
+    showTrickPlay.disabled = true;
+    shakaDemo.controls_.showTrickPlay(false);
+    shakaDemo.controls_.setEnabled(false);
+  } else {
+    showTrickPlay.disabled = false;
+    shakaDemo.controls_.setEnabled(true);
+  }
+
   // Change the hash, to mirror this.
   shakaDemo.hashShouldChange_();
 };
