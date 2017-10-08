@@ -18,7 +18,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="description" content="Shaka Player Demo">
-    <meta name="viewport" content="width=device-width, user-scalable=yes, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, user-scalable=yes, initial-scale=1">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#ffffff">
 
@@ -26,25 +26,51 @@
 
     <title>Shaka Player Demo</title>
 
+    <link rel="manifest" href="app_manifest.json">
     <link rel="icon" href="favicon.ico">
     <link rel="stylesheet" href="demo.css">
-    <link rel="stylesheet" href="controls.css">
+    <link rel="stylesheet" href="common/controls.css">
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto+Condensed">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 
-    <script src="//www.gstatic.com/cv/js/sender/v1/cast_sender.js"></script>
-    <script src="load.js"></script>
-    <script src="assets.js"></script>
-    <script src="demo_utils.js"></script>
-    <script src="main.js"></script>
-    <script src="asset_section.js"></script>
-    <script src="configuration_section.js"></script>
-    <script src="info_section.js"></script>
-    <script src="log_section.js"></script>
-    <script src="offline_section.js"></script>
-    <script src="controls.js"></script>
+    <script defer src="//www.gstatic.com/cv/js/sender/v1/cast_sender.js"></script>
+
+    <script>
+COMPILED_JS = [
+  // The compiled library.
+  '../dist/shaka-player.compiled.js',
+  // The compiled demo.
+  '../dist/demo.compiled.js'
+];
+COMPILED_DEBUG_JS = [
+  // The compiled library, debug mode.
+  '../dist/shaka-player.compiled.debug.js',
+  // The compiled demo.
+  '../dist/demo.compiled.js'
+];
+UNCOMPILED_JS = [
+  // Bootstrap the Shaka Player library through the Closure library.
+  '../third_party/closure/goog/base.js',
+  '../dist/deps.js',
+  // This file contains goog.require calls for all exported library classes.
+  '../shaka-player.uncompiled.js',
+  // These are the individual parts of the demo app.
+  'common/assets.js',
+  'common/controls.js',
+  'common/demo_utils.js',
+  'main.js',
+  'asset_section.js',
+  'configuration_section.js',
+  'info_section.js',
+  'log_section.js',
+  'offline_section.js'
+];
+    </script>
+
+    <!-- Load the compiled or uncompiled version of the code. -->
+    <script defer src="load.js"></script>
   </head>
   <body>
     <div id="container">
@@ -134,6 +160,10 @@
           <input id="preferredTextLanguage" class="flex-grow" type="text">
         </div>
         <div>
+          <label for="showNative">Show native browser controls:</label>
+          <input id="showNative" type="checkbox">
+        </div>
+        <div>
           <label for="showTrickPlay">Show trick play controls:</label>
           <input id="showTrickPlay" type="checkbox">
         </div>
@@ -149,6 +179,14 @@
           <label for="logToScreen">Log to the screen:</label>
           <input id="logToScreen" type="checkbox">
         </div>
+        <div>
+          <label for="smallGapLimit">Maximum small gap size:</label>
+          <input id="smallGapLimit" class="flex-grow" type="text">
+        </div>
+        <div>
+          <label for="jumpLargeGaps">Jump large gaps:</label>
+          <input id="jumpLargeGaps" type="checkbox">
+        </div>
         <div id="logLevelListDiv" hidden>
           <label for="logLevelList">Log Level:</label>
           <select id="logLevelList" class="flex-grow">
@@ -158,6 +196,15 @@
             <option value="vv">Very Verbose</option>
           </select>
         </div>
+        <div>
+          <label for="drmSettingsVideoRobustness">Video Robustness:</label>
+          <input id="drmSettingsVideoRobustness" type="text" class="flex-grow" list="robustnessSuggestions">
+        </div>
+        <div>
+          <label for="drmSettingsAudioRobustness">Audio Robustness:</label>
+          <input id="drmSettingsAudioRobustness" type="text" class="flex-grow" list="robustnessSuggestions">
+        </div>
+	<datalist id="robustnessSuggestions"></datalist>
       </details>
 
       <details class="input">
@@ -196,7 +243,8 @@
       <details id="offlineSection" class="input">
         <summary>Offline</summary>
         <div>
-          <button id="storeDelete">Store</button>
+          <button id="storeDeleteButton">Store</button>
+          <span id="storeDeleteHelpText"></span>
         </div>
         <div id="progressDiv">
           <span class="label">Progress:</span>

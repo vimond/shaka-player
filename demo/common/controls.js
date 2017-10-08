@@ -23,6 +23,9 @@
  * @suppress {missingProvide}
  */
 function ShakaControls() {
+  /** @private {boolean} */
+  this.enabled_ = true;
+
   /** @private {shaka.cast.CastProxy} */
   this.castProxy_ = null;
 
@@ -113,16 +116,6 @@ ShakaControls.prototype.init = function(castProxy, onError, notifyCastStatus) {
   this.notifyCastStatus_ = notifyCastStatus;
   this.initMinimal(castProxy.getVideo(), castProxy.getPlayer());
 
-  // IE11 doesn't treat the 'input' event correctly.
-  // https://connect.microsoft.com/IE/Feedback/Details/856998
-  // If you know a better way than a userAgent check to handle this, please
-  // send a patch.
-  var sliderInputEvent = 'input';
-  // This matches IE11, but not Edge.  Edge does not have this problem.
-  if (navigator.userAgent.indexOf('Trident/') >= 0) {
-    sliderInputEvent = 'change';
-  }
-
   this.playPauseButton_.addEventListener(
       'click', this.onPlayPauseClick_.bind(this));
   this.video_.addEventListener(
@@ -133,9 +126,9 @@ ShakaControls.prototype.init = function(castProxy, onError, notifyCastStatus) {
   this.seekBar_.addEventListener(
       'mousedown', this.onSeekStart_.bind(this));
   this.seekBar_.addEventListener(
-      'touchstart', this.onSeekStart_.bind(this));
+      'touchstart', this.onSeekStart_.bind(this), { passive: true });
   this.seekBar_.addEventListener(
-      sliderInputEvent, this.onSeekInput_.bind(this));
+      'input', this.onSeekInput_.bind(this));
   this.seekBar_.addEventListener(
       'touchend', this.onSeekEnd_.bind(this));
   this.seekBar_.addEventListener(
@@ -145,7 +138,7 @@ ShakaControls.prototype.init = function(castProxy, onError, notifyCastStatus) {
       'click', this.onMuteClick_.bind(this));
 
   this.volumeBar_.addEventListener(
-      sliderInputEvent, this.onVolumeInput_.bind(this));
+      'input', this.onVolumeInput_.bind(this));
   this.video_.addEventListener(
       'volumechange', this.onVolumeStateChange_.bind(this));
   // initialize volume display with a fake event
@@ -175,9 +168,9 @@ ShakaControls.prototype.init = function(castProxy, onError, notifyCastStatus) {
       'click', this.onCastClick_.bind(this));
 
   this.videoContainer_.addEventListener(
-      'touchstart', this.onContainerTouch_.bind(this));
+      'touchstart', this.onContainerTouch_.bind(this), { passive: false });
   this.videoContainer_.addEventListener(
-      'click', this.onPlayPauseClick_.bind(this));
+      'click', this.onContainerClick_.bind(this));
 
   // Clicks in the controls should not propagate up to the video container.
   this.controls_.addEventListener(
@@ -186,9 +179,9 @@ ShakaControls.prototype.init = function(castProxy, onError, notifyCastStatus) {
   this.videoContainer_.addEventListener(
       'mousemove', this.onMouseMove_.bind(this));
   this.videoContainer_.addEventListener(
-      'touchmove', this.onMouseMove_.bind(this));
+      'touchmove', this.onMouseMove_.bind(this), { passive: true });
   this.videoContainer_.addEventListener(
-      'touchend', this.onMouseMove_.bind(this));
+      'touchend', this.onMouseMove_.bind(this), { passive: true });
   this.videoContainer_.addEventListener(
       'mouseout', this.onMouseOut_.bind(this));
 
@@ -236,6 +229,28 @@ ShakaControls.prototype.loadComplete = function() {
 
 
 /**
+ * Enable or disable the custom controls.
+ * Disabling custom controls enables native controls.
+ *
+ * @param {boolean} enabled
+ */
+ShakaControls.prototype.setEnabled = function(enabled) {
+  this.enabled_ = enabled;
+  if (enabled) {
+    this.controls_.parentElement.style.display = 'inherit';
+    this.video_.controls = false;
+  } else {
+    this.controls_.parentElement.style.display = 'none';
+    this.video_.controls = true;
+  }
+
+  // The effects of play state changes are inhibited while showing native
+  // browser controls.  Recalculate that state now.
+  this.onPlayStateChange_();
+};
+
+
+/**
  * Hiding the cursor when the mouse stops moving seems to be the only decent UX
  * in fullscreen mode.  Since we can't use pure CSS for that, we use events both
  * in and out of fullscreen mode.
@@ -251,6 +266,11 @@ ShakaControls.prototype.onMouseMove_ = function(event) {
     // mouse moving, so treat it like a mouse.
     this.lastTouchEventTime_ = null;
   }
+
+  // When there is a touch, we can get a 'mousemove' event after touch events.
+  // This should be treated as part of the touch, which has already been handled
+  if (this.lastTouchEventTime_ && event.type == 'mousemove')
+    return;
 
   // Use the cursor specified in the CSS file.
   this.videoContainer_.style.cursor = '';
@@ -275,6 +295,10 @@ ShakaControls.prototype.onMouseMove_ = function(event) {
 
 /** @private */
 ShakaControls.prototype.onMouseOut_ = function() {
+  // We sometimes get 'mouseout' events with touches.  Since we can never leave
+  // the video element when touching, ignore.
+  if (this.lastTouchEventTime_) return;
+
   // Expire the timer early.
   if (this.mouseStillTimeoutId_) {
     window.clearTimeout(this.mouseStillTimeoutId_);
@@ -322,8 +346,21 @@ ShakaControls.prototype.onContainerTouch_ = function(event) {
 };
 
 
+/**
+ * @param {!Event} event
+ * @private
+ */
+ShakaControls.prototype.onContainerClick_ = function(event) {
+  if (!this.enabled_) return;
+
+  this.onPlayPauseClick_();
+};
+
+
 /** @private */
 ShakaControls.prototype.onPlayPauseClick_ = function() {
+  if (!this.enabled_) return;
+
   if (!this.video_.duration) {
     // Can't play yet.  Ignore.
     return;
@@ -343,7 +380,7 @@ ShakaControls.prototype.onPlayPauseClick_ = function() {
 /** @private */
 ShakaControls.prototype.onPlayStateChange_ = function() {
   // Video is paused during seek, so don't show the play arrow while seeking:
-  if (this.video_.paused && !this.isSeeking_) {
+  if (this.enabled_ && this.video_.paused && !this.isSeeking_) {
     this.playPauseButton_.textContent = 'play_arrow';
     this.giantPlayButtonContainer_.style.display = 'inline';
   } else {
@@ -355,6 +392,8 @@ ShakaControls.prototype.onPlayStateChange_ = function() {
 
 /** @private */
 ShakaControls.prototype.onSeekStart_ = function() {
+  if (!this.enabled_) return;
+
   this.isSeeking_ = true;
   this.video_.pause();
 };
@@ -362,6 +401,8 @@ ShakaControls.prototype.onSeekStart_ = function() {
 
 /** @private */
 ShakaControls.prototype.onSeekInput_ = function() {
+  if (!this.enabled_) return;
+
   if (!this.video_.duration) {
     // Can't seek yet.  Ignore.
     return;
@@ -388,6 +429,8 @@ ShakaControls.prototype.onSeekInputTimeout_ = function() {
 
 /** @private */
 ShakaControls.prototype.onSeekEnd_ = function() {
+  if (!this.enabled_) return;
+
   if (this.seekTimeoutId_ != null) {
     // They just let go of the seek bar, so end the timer early.
     window.clearTimeout(this.seekTimeoutId_);
@@ -401,6 +444,8 @@ ShakaControls.prototype.onSeekEnd_ = function() {
 
 /** @private */
 ShakaControls.prototype.onMuteClick_ = function() {
+  if (!this.enabled_) return;
+
   this.video_.muted = !this.video_.muted;
 };
 
@@ -436,6 +481,8 @@ ShakaControls.prototype.onVolumeInput_ = function() {
 
 /** @private */
 ShakaControls.prototype.onCaptionClick_ = function() {
+  if (!this.enabled_) return;
+
   this.player_.setTextTrackVisibility(!this.player_.isTextTrackVisible());
 };
 
@@ -460,6 +507,8 @@ ShakaControls.prototype.onCaptionStateChange_ = function() {
 
 /** @private */
 ShakaControls.prototype.onFullscreenClick_ = function() {
+  if (!this.enabled_) return;
+
   if (document.fullscreenElement) {
     document.exitFullscreen();
   } else {
@@ -470,6 +519,8 @@ ShakaControls.prototype.onFullscreenClick_ = function() {
 
 /** @private */
 ShakaControls.prototype.onCurrentTimeClick_ = function() {
+  if (!this.enabled_) return;
+
   // Jump to LIVE if the user clicks on the current time.
   if (this.player_.isLive()) {
     this.video_.currentTime = this.seekBar_.max;
@@ -482,6 +533,8 @@ ShakaControls.prototype.onCurrentTimeClick_ = function() {
  * @private
  */
 ShakaControls.prototype.onRewindClick_ = function() {
+  if (!this.enabled_) return;
+
   if (!this.video_.duration) {
     return;
   }
@@ -497,6 +550,8 @@ ShakaControls.prototype.onRewindClick_ = function() {
  * @private
  */
 ShakaControls.prototype.onFastForwardClick_ = function() {
+  if (!this.enabled_) return;
+
   if (!this.video_.duration) {
     return;
   }
@@ -509,15 +564,23 @@ ShakaControls.prototype.onFastForwardClick_ = function() {
 
 /** @private */
 ShakaControls.prototype.onCastClick_ = function() {
+  if (!this.enabled_) return;
+
   if (this.castProxy_.isCasting()) {
     this.castProxy_.suggestDisconnect();
   } else {
     this.castButton_.disabled = true;
+    // Disable the load button, to prevent the users from trying to load an
+    // asset while the cast proxy is connecting.
+    // That can lead to strange, erratic behavior.
+    document.getElementById('loadButton').disabled = true;
     this.castProxy_.cast().then(function() {
+      document.getElementById('loadButton').disabled = false;
       this.castButton_.disabled = false;
       // Success!
     }.bind(this), function(error) {
       this.castButton_.disabled = false;
+      document.getElementById('loadButton').disabled = false;
       if (error.code != shaka.util.Error.Code.CAST_CANCELED_BY_USER) {
         this.onError_(error);
       }
@@ -541,7 +604,11 @@ ShakaControls.prototype.onCastStatusChange_ = function(event) {
       isCasting ? 'inherit' : 'none';
   this.castReceiverName_.textContent =
       isCasting ? 'Casting to ' + this.castProxy_.receiverName() : '';
-  this.controls_.classList.toggle('casting', this.castProxy_.isCasting());
+  if (this.castProxy_.isCasting()) {
+    this.controls_.classList.add('casting');
+  } else {
+    this.controls_.classList.remove('casting');
+  }
 };
 
 
@@ -572,6 +639,11 @@ ShakaControls.prototype.showTrickPlay = function(show) {
  * @private
  */
 ShakaControls.prototype.isOpaque_ = function() {
+  if (!this.enabled_) return false;
+
+  // While you are casting, the UI is always opaque.
+  if (this.castProxy_ && this.castProxy_.isCasting()) return true;
+
   var parentElement = this.controls_.parentElement;
   // The controls are opaque if either:
   //   1. We have explicitly made them so in JavaScript
@@ -599,6 +671,7 @@ ShakaControls.prototype.updateTimeAndSeekRange_ = function() {
   var bufferedEnd =
       bufferedLength ? this.video_.buffered.end(bufferedLength - 1) : 0;
   var seekRange = this.player_.seekRange();
+  var seekRangeSize = seekRange.end - seekRange.start;
 
   this.seekBar_.min = seekRange.start;
   this.seekBar_.max = seekRange.end;
@@ -607,7 +680,8 @@ ShakaControls.prototype.updateTimeAndSeekRange_ = function() {
     // The amount of time we are behind the live edge.
     var behindLive = Math.floor(seekRange.end - displayTime);
     displayTime = Math.max(0, behindLive);
-    var showHour = (seekRange.end - seekRange.start) >= 3600;
+
+    var showHour = seekRangeSize >= 3600;
 
     // Consider "LIVE" when less than 1 second behind the live-edge.  Always
     // show the full time string when seeking, including the leading '-';
@@ -626,6 +700,7 @@ ShakaControls.prototype.updateTimeAndSeekRange_ = function() {
     }
   } else {
     var showHour = duration >= 3600;
+
     this.currentTime_.textContent =
         this.buildTimeString_(displayTime, showHour);
 
@@ -640,22 +715,17 @@ ShakaControls.prototype.updateTimeAndSeekRange_ = function() {
   if (bufferedLength == 0) {
     gradient.push('#000 0%');
   } else {
-    // NOTE: the fallback to zero eliminates NaN.
-    var bufferStartFraction = (bufferedStart / duration) || 0;
-    var bufferEndFraction = (bufferedEnd / duration) || 0;
-    var playheadFraction = (displayTime / duration) || 0;
+    var clampedBufferStart = Math.max(bufferedStart, seekRange.start);
+    var clampedBufferEnd = Math.min(bufferedEnd, seekRange.end);
 
-    if (this.player_.isLive()) {
-      var bufferStart = Math.max(bufferedStart, seekRange.start);
-      var bufferEnd = Math.min(bufferedEnd, seekRange.end);
-      var seekRangeSize = seekRange.end - seekRange.start;
-      var bufferStartDistance = bufferStart - seekRange.start;
-      var bufferEndDistance = bufferEnd - seekRange.start;
-      var playheadDistance = displayTime - seekRange.start;
-      bufferStartFraction = (bufferStartDistance / seekRangeSize) || 0;
-      bufferEndFraction = (bufferEndDistance / seekRangeSize) || 0;
-      playheadFraction = (playheadDistance / seekRangeSize) || 0;
-    }
+    var bufferStartDistance = clampedBufferStart - seekRange.start;
+    var bufferEndDistance = clampedBufferEnd - seekRange.start;
+    var playheadDistance = displayTime - seekRange.start;
+
+    // NOTE: the fallback to zero eliminates NaN.
+    var bufferStartFraction = (bufferStartDistance / seekRangeSize) || 0;
+    var bufferEndFraction = (bufferEndDistance / seekRangeSize) || 0;
+    var playheadFraction = (playheadDistance / seekRangeSize) || 0;
 
     gradient.push('#000 ' + (bufferStartFraction * 100) + '%');
     gradient.push('#ccc ' + (bufferStartFraction * 100) + '%');

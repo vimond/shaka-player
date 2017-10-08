@@ -27,6 +27,10 @@
 var shakaDemo = shakaDemo || {};
 
 
+/** @private {!Array.<HTMLOptGroupElement>} */
+shakaDemo.onlineOptGroups_ = [];
+
+
 /**
  * @return {!Promise}
  * @private
@@ -45,8 +49,10 @@ shakaDemo.setupAssets_ = function() {
       group = /** @type {!HTMLOptGroupElement} */(
           document.createElement('optgroup'));
       group.label = asset.source;
+      group.disabled = !navigator.onLine;
       groups[asset.source] = group;
       assetList.appendChild(group);
+      shakaDemo.onlineOptGroups_.push(group);
     }
 
     var option = document.createElement('option');
@@ -64,12 +70,14 @@ shakaDemo.setupAssets_ = function() {
       mimeTypes.push('video/webm');
     if (asset.features.indexOf(shakaAssets.Feature.MP4) >= 0)
       mimeTypes.push('video/mp4');
+    if (asset.features.indexOf(shakaAssets.Feature.MP2TS) >= 0)
+      mimeTypes.push('video/mp2t');
     if (!mimeTypes.some(
         function(type) { return shakaDemo.support_.media[type]; })) {
       option.disabled = true;
     }
 
-    if (!option.disabled) {
+    if (!option.disabled && !group.disabled) {
       first = first || option;
       if (asset.focus) first = option;
     }
@@ -136,43 +144,70 @@ shakaDemo.preparePlayer_ = function(asset) {
 
   var player = shakaDemo.player_;
 
+  var videoRobustness =
+      document.getElementById('drmSettingsVideoRobustness').value;
+  var audioRobustness =
+      document.getElementById('drmSettingsAudioRobustness').value;
+
+  var commonDrmSystems =
+      ['com.widevine.alpha', 'com.microsoft.playready', 'com.adobe.primetime'];
   var config = /** @type {shakaExtern.PlayerConfiguration} */(
-      { abr: {}, manifest: { dash: {} } });
+      { abr: {}, streaming: {}, manifest: { dash: {} } });
+  config.drm = /** @type {shakaExtern.DrmConfiguration} */({
+    advanced: {}});
+  commonDrmSystems.forEach(function(system) {
+    config.drm.advanced[system] =
+        /** @type {shakaExtern.AdvancedDrmConfiguration} */({});
+  });
   config.manifest.dash.clockSyncUri =
       '//shaka-player-demo.appspot.com/time.txt';
 
   if (!asset) {
     // Use the custom fields.
-    var licenseServer = document.getElementById('licenseServerInput').value;
+    var licenseServers = {};
+    commonDrmSystems.forEach(function(system) {
+      licenseServers[system] =
+          document.getElementById('licenseServerInput').value;
+    });
     asset = /** @type {shakaAssets.AssetInfo} */ ({
       manifestUri: document.getElementById('manifestInput').value,
       // Use the custom license server for all key systems.
       // This simplifies configuration for the user.
       // They will simply fill in a Widevine license server on Chrome, etc.
-      licenseServers: {
-        'com.widevine.alpha': licenseServer,
-        'com.microsoft.playready': licenseServer,
-        'com.adobe.primetime': licenseServer
-      }
+      licenseServers: licenseServers
     });
   }
 
   player.resetConfiguration();
 
-  // Add config from this asset.
+  // Add configuration from this asset.
   ShakaDemoUtils.setupAssetMetadata(asset, player);
-  shakaDemo.castProxy_.setAppData({
-    'asset': asset,
-    'isYtDrm': asset.drmCallback == shakaAssets.YouTubeCallback
-  });
+  shakaDemo.castProxy_.setAppData({'asset': asset});
 
-  // Add configuration from the UI.
+  // Add drm configuration from the UI.
+  if (videoRobustness) {
+    commonDrmSystems.forEach(function(system) {
+      config.drm.advanced[system].videoRobustness = videoRobustness;
+    });
+  }
+  if (audioRobustness) {
+    commonDrmSystems.forEach(function(system) {
+      config.drm.advanced[system].audioRobustness = audioRobustness;
+    });
+  }
+
+  // Add other configuration from the UI.
   config.preferredAudioLanguage =
       document.getElementById('preferredAudioLanguage').value;
   config.preferredTextLanguage =
       document.getElementById('preferredTextLanguage').value;
   config.abr.enabled =
       document.getElementById('enableAdaptation').checked;
+  var smallGapLimit = document.getElementById('smallGapLimit').value;
+  if (!isNaN(Number(smallGapLimit)) && smallGapLimit.length > 0)
+    config.streaming.smallGapLimit = Number(smallGapLimit);
+  config.streaming.jumpLargeGaps =
+      document.getElementById('jumpLargeGaps').checked;
 
   player.configure(config);
 
@@ -182,6 +217,15 @@ shakaDemo.preparePlayer_ = function(asset) {
   }
 
   return asset;
+};
+
+
+/** Compute which assets should be disabled. */
+shakaDemo.computeDisabledAssets = function() {
+  // TODO: use remote support probe, recompute asset disabled when casting?
+  shakaDemo.onlineOptGroups_.forEach(function(group) {
+    group.disabled = !navigator.onLine;
+  });
 };
 
 
@@ -203,13 +247,8 @@ shakaDemo.load = function() {
 
     shakaDemo.hashShouldChange_();
 
-    // Audio-only tracks have no width/height.
-    var videoTracks = player.getVariantTracks().filter(function(t) {
-      return t.videoCodec;
-    });
-
     // Set a different poster for audio-only assets.
-    if (videoTracks.length == 0) {
+    if (player.isAudioOnly()) {
       shakaDemo.localVideo_.poster = shakaDemo.audioOnlyPoster_;
     }
 
@@ -230,7 +269,8 @@ shakaDemo.load = function() {
   }, function(reason) {
     var error = /** @type {!shaka.util.Error} */(reason);
     if (error.code == shaka.util.Error.Code.LOAD_INTERRUPTED) {
-      shaka.log.debug('load() interrupted');
+      // Don't use shaka.log, which is not present in compiled builds.
+      console.debug('load() interrupted');
     } else {
       shakaDemo.onError_(error);
     }
