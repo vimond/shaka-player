@@ -1,7 +1,7 @@
 {
   "name": "vimond-shaka-player",
   "description": "DASH/EME video player library",
-  "version": "2.2.0",
+  "version": "2.2.6",
   "homepage": "https://github.com/vimond/shaka-player",
   "publishConfig": {
     "registry": "https://vimond.jfrog.io/vimond/api/npm/npm-local/"
