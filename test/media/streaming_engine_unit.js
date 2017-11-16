@@ -852,8 +852,7 @@ describe('StreamingEngine', function() {
     // When we can switch in the second Period, switch to the playing stream.
     onCanSwitch.and.callFake(function() {
       onCanSwitch.and.callFake(function() {
-        expect(streamingEngine.getActiveStreams()[ContentType.TEXT])
-            .toBe(textStream2);
+        expect(streamingEngine.getActiveText()).toBe(textStream2);
 
         mediaSourceEngine.reinitText.calls.reset();
         streamingEngine.switchTextStream(textStream2);
@@ -2139,7 +2138,8 @@ describe('StreamingEngine', function() {
       onStartupComplete.and.callFake(setupFakeGetTime.bind(null, 0));
 
       var originalRemove =
-          shaka.test.FakeMediaSourceEngine.prototype.removeImpl;
+          shaka.test.FakeMediaSourceEngine.prototype.removeImpl
+              .bind(mediaSourceEngine);
 
       mediaSourceEngine.remove.and.callFake(function(type, start, end) {
         expect(playheadTime).toBe(20);
@@ -2151,11 +2151,11 @@ describe('StreamingEngine', function() {
             expect(playheadTime).toBe(30);
             expect(start).toBe(10);
             expect(end).toBe(20);
-            return originalRemove.call(this, type, start, end);
+            return originalRemove.call(null, type, start, end);
           });
         }
 
-        return originalRemove.call(this, type, start, end);
+        return originalRemove.call(null, type, start, end);
       });
 
       // Here we go!

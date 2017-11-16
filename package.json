@@ -30,6 +30,7 @@
     "karma-safari-launcher": "~1.0.0",
     "karma-spec-reporter": "~0.0.31",
     "karma-webdriver-launcher": "~1.0.5",
+    "mux.js": "~4.2.1",
     "requirejs": "~2.3.3",
     "rimraf": "~2.6.1",
     "sprintf-js": "~1.0.3",
@@ -46,6 +47,6 @@
   },
   "license": "Apache-2.0",
   "scripts": {
-    "prepublish": "in-publish && python ./build/checkversion.py && python ./build/all.py --force && python ./build/build.py --force --debug || not-in-publish"
+    "prepublish": "in-publish && python ./build/checkversion.py && python ./build/all.py --force || not-in-publish"
   }
 }

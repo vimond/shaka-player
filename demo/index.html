@@ -36,6 +36,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 
     <script defer src="//www.gstatic.com/cv/js/sender/v1/cast_sender.js"></script>
+    <script defer src="../node_modules/mux.js/dist/mux.js"></script>
 
     <script>
 COMPILED_JS = [
@@ -48,7 +49,7 @@ COMPILED_DEBUG_JS = [
   // The compiled library, debug mode.
   '../dist/shaka-player.compiled.debug.js',
   // The compiled demo.
-  '../dist/demo.compiled.js'
+  '../dist/demo.compiled.debug.js'
 ];
 UNCOMPILED_JS = [
   // Bootstrap the Shaka Player library through the Closure library.
@@ -77,6 +78,11 @@ UNCOMPILED_JS = [
       <h1>Shaka Player <span id="version"></span></h1>
 
       <div class="input">
+        <p id="compiled_links">
+          <a href="#" id="uncompiled_link">uncompiled</a> |
+          <a href="#" id="debug_compiled_link">compiled (debug)</a> |
+          <a href="#" id="compiled_link">compiled (release)</a>
+        </p>
         <p>This is a demo of Google's Shaka Player, a JavaScript library for
            adaptive video streaming.</p>
 
@@ -171,8 +177,8 @@ UNCOMPILED_JS = [
           <input id="enableAdaptation" type="checkbox" checked>
         </div>
         <div>
-          <label for="enableAutoplay">Autoplay:</label>
-          <input id="enableAutoplay" type="checkbox">
+          <label for="enableLoadOnRefresh">Auto-load on page refresh:</label>
+          <input id="enableLoadOnRefresh" type="checkbox">
         </div>
         <div>
           <label for="logToScreen">Log to the screen:</label>

@@ -166,7 +166,7 @@ shaka.test.TestScheme.DATA = {
       mimeType: 'text/vtt'
     },
     licenseServers: {
-      'com.widevine.alpha': '//widevine-proxy.appspot.com/proxy'
+      'com.widevine.alpha': '//cwip-shaka-proxy.appspot.com/no_auth'
     },
     duration: 30
   },

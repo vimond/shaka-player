@@ -16,6 +16,8 @@
  */
 
 describe('Offline', /** @suppress {accessControls} */ function() {
+  var Scheme = shaka.offline.OfflineScheme;
+
   /** @const */
   var originalName = shaka.offline.DBEngine.DB_NAME_;
 
@@ -54,7 +56,8 @@ describe('Offline', /** @suppress {accessControls} */ function() {
     player.addEventListener('error', fail);
     storage = new shaka.offline.Storage(player);
     dbEngine = new shaka.offline.DBEngine();
-    dbEngine.init(shaka.offline.OfflineUtils.DB_SCHEME).catch(fail).then(done);
+    shaka.offline.StorageEngineFactory.initEngine(dbEngine)
+        .catch(fail).then(done);
   });
 
   afterEach(function(done) {
@@ -120,7 +123,7 @@ describe('Offline', /** @suppress {accessControls} */ function() {
     storage.store('test:sintel-enc')
         .then(function(content) {
           storedContent = content;
-          expect(storedContent.offlineUri).toBe('offline:0');
+          expect(storedContent.offlineUri).toBe(Scheme.manifestIdToUri(0));
           return dbEngine.get('manifest', 0);
         })
         .then(function(manifestDb) {
@@ -201,7 +204,7 @@ describe('Offline', /** @suppress {accessControls} */ function() {
         storage.store('test:sintel-enc')
             .then(function(content) {
               storedContent = content;
-              expect(storedContent.offlineUri).toBe('offline:0');
+              expect(storedContent.offlineUri).toBe(Scheme.manifestIdToUri(0));
               return dbEngine.get('manifest', 0);
             })
             .then(function(manifestDb) {
