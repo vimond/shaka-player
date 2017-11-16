@@ -126,6 +126,48 @@ shakaExtern.Stats;
 
 /**
  * @typedef {{
+ *   start: number,
+ *   end: number
+ * }}
+ *
+ * @description
+ * Contains the times of a range of buffered content.
+ *
+ * @property {number} start
+ *   The start time of the range, in seconds.
+ * @property {number} end
+ *   The end time of the range, in seconds.
+ * @exportDoc
+ */
+shakaExtern.BufferedRange;
+
+
+/**
+ * @typedef {{
+ *   total: !Array.<shakaExtern.BufferedRange>,
+ *   audio: !Array.<shakaExtern.BufferedRange>,
+ *   video: !Array.<shakaExtern.BufferedRange>,
+ *   text: !Array.<shakaExtern.BufferedRange>
+ * }}
+ *
+ * @description
+ * Contains information about the current buffered ranges.
+ *
+ * @property {!Array.<shakaExtern.BufferedRange>} total
+ *   The combined audio/video buffered ranges, reported by |video.buffered|.
+ * @property {!Array.<shakaExtern.BufferedRange>} audio
+ *   The buffered ranges for audio content.
+ * @property {!Array.<shakaExtern.BufferedRange>} video
+ *   The buffered ranges for video content.
+ * @property {!Array.<shakaExtern.BufferedRange>} text
+ *   The buffered ranges for text content.
+ * @exportDoc
+ */
+shakaExtern.BufferedInfo;
+
+
+/**
+ * @typedef {{
  *   id: number,
  *   active: boolean,
  *
@@ -474,32 +516,14 @@ shakaExtern.DashManifestConfiguration;
 
 /**
  * @typedef {{
- *   defaultTimeOffset: number
- * }}
- *
- * @property {number} defaultTimeOffset
- *   Default time offset (in seconds) for hls content used when no offset
- *   is specified by the manifest. Defaults to 0 if not provided.
- *   NOTE: Default time offset for Apple encoded content is 10 seconds.
- *
- * @exportDoc
- */
-shakaExtern.HlsManifestConfiguration;
-
-
-/**
- * @typedef {{
  *   retryParameters: shakaExtern.RetryParameters,
- *   dash: shakaExtern.DashManifestConfiguration,
- *   hls: shakaExtern.HlsManifestConfiguration
+ *   dash: shakaExtern.DashManifestConfiguration
  * }}
  *
  * @property {shakaExtern.RetryParameters} retryParameters
  *   Retry parameters for manifest requests.
  * @property {shakaExtern.DashManifestConfiguration} dash
  *   Advanced parameters used by the DASH manifest parser.
- * @property {shakaExtern.HlsManifestConfiguration} hls
- *   Advanced parameters used by the HLS manifest parser.
  *
  * @exportDoc
  */

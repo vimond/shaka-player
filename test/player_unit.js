@@ -26,6 +26,8 @@ describe('Player', function() {
   /** @const */
   var originalLogWarn = shaka.log.warning;
   /** @const */
+  var originalLogAlwaysWarn = shaka.log.alwaysWarn;
+  /** @const */
   var originalIsTypeSupported = window.MediaSource.isTypeSupported;
 
   /** @type {!jasmine.Spy} */
@@ -70,6 +72,7 @@ describe('Player', function() {
     shaka.log.error = shaka.test.Util.spyFunc(logErrorSpy);
     logWarnSpy = jasmine.createSpy('shaka.log.warning');
     shaka.log.warning = shaka.test.Util.spyFunc(logWarnSpy);
+    shaka.log.alwaysWarn = shaka.test.Util.spyFunc(logWarnSpy);
   });
 
   beforeEach(function() {
@@ -157,6 +160,7 @@ describe('Player', function() {
   afterAll(function() {
     shaka.log.error = originalLogError;
     shaka.log.warning = originalLogWarn;
+    shaka.log.alwaysWarn = originalLogAlwaysWarn;
     window.MediaSource.isTypeSupported = originalIsTypeSupported;
   });
 
@@ -169,6 +173,7 @@ describe('Player', function() {
       player.load('', 0, factory).then(function() {
         return player.destroy();
       }).then(function() {
+        expect(abrManager.stop).toHaveBeenCalled();
         expect(networkingEngine.destroy).toHaveBeenCalled();
         expect(drmEngine.destroy).toHaveBeenCalled();
         expect(playhead.destroy).toHaveBeenCalled();
@@ -177,6 +182,28 @@ describe('Player', function() {
         expect(streamingEngine.destroy).toHaveBeenCalled();
         expect(textDisplayer.destroy).toHaveBeenCalled();
       }).catch(fail).then(done);
+    });
+
+    it('destroys parser first when interrupting load', function(done) {
+      var p = shaka.test.Util.delay(0.3);
+      var parser = new shaka.test.FakeManifestParser(manifest);
+      parser.start.and.returnValue(p);
+      parser.stop.and.callFake(function() {
+        expect(abrManager.stop).not.toHaveBeenCalled();
+        expect(networkingEngine.destroy).not.toHaveBeenCalled();
+        expect(textDisplayer.destroy).not.toHaveBeenCalled();
+      });
+      var factory = function() { return parser; };
+
+      player.load('', 0, factory).then(fail);
+      shaka.test.Util.delay(0.1).then(function() {
+        player.destroy().catch(fail).then(function() {
+          expect(abrManager.stop).toHaveBeenCalled();
+          expect(networkingEngine.destroy).toHaveBeenCalled();
+          expect(textDisplayer.destroy).toHaveBeenCalled();
+          expect(parser.stop).toHaveBeenCalled();
+        }).then(done);
+      });
     });
   });
 
@@ -375,6 +402,25 @@ describe('Player', function() {
       });
       player.unload().catch(fail);
       player.unload().catch(fail);
+    });
+
+    it('streaming event', function(done) {
+      var streamingListener = jasmine.createSpy('listener');
+      streamingListener.and.callFake(function() {
+        var tracks = player.getVariantTracks();
+        expect(tracks).toBeDefined();
+        expect(tracks.length).toEqual(1);
+        var activeTracks = player.getVariantTracks().filter(function(track) {
+          return track.active;
+        });
+        expect(activeTracks.length).toEqual(0);
+      });
+
+      player.addEventListener('streaming', Util.spyFunc(streamingListener));
+      expect(streamingListener).not.toHaveBeenCalled();
+      player.load('', 0, factory1).then(function() {
+        expect(streamingListener).toHaveBeenCalled();
+      }).catch(fail).then(done);
     });
 
     describe('interruption during', function() {
@@ -789,6 +835,43 @@ describe('Player', function() {
       })
       .catch(fail)
       .then(done);
+    });
+
+    it('does not clear buffers when restrictions change', function(done) {
+      var smallBandwidth = 200000;
+      var largeBandwidth = 1000000;
+
+      var smallDelay = 0.5;
+      var doNotClear = false;
+
+      var smallBandwidthSettings = {
+        abr: {restrictions: {maxBandwidth: smallBandwidth}}
+      };
+
+      var largeBandwidthSettings = {
+        abr: {restrictions: {maxBandwidth: largeBandwidth}}
+      };
+
+      var parser = new shaka.test.FakeManifestParser(manifest);
+      var factory = function() { return parser; };
+
+      var switchVariantSpy = spyOn(player, 'switchVariant_');
+
+      player.configure(smallBandwidthSettings);
+
+      player.load('', 0, factory)
+          .then(function() {
+            player.configure(largeBandwidthSettings);
+            // Delay to ensure that the switch would have been called.
+            return shaka.test.Util.delay(smallDelay);
+          })
+          .then(function() {
+            expect(switchVariantSpy).toHaveBeenCalledWith(
+                /* variant */ jasmine.anything(),
+                doNotClear);
+          })
+          .catch(fail)
+          .then(done);
     });
   });
 
@@ -1224,7 +1307,13 @@ describe('Player', function() {
           roles: [],
           channelsCount: null,
           audioBandwidth: null,
-          videoBandwidth: null
+          videoBandwidth: null,
+          bandwidth: 0,
+          width: null,
+          height: null,
+          frameRate: null,
+          videoId: null,
+          audioId: null
         },
         {
           id: 7,
@@ -1241,7 +1330,13 @@ describe('Player', function() {
           roles: [],
           channelsCount: null,
           audioBandwidth: null,
-          videoBandwidth: null
+          videoBandwidth: null,
+          bandwidth: 0,
+          width: null,
+          height: null,
+          frameRate: null,
+          videoId: null,
+          audioId: null
         }
       ];
 

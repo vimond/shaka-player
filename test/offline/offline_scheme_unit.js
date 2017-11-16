@@ -16,31 +16,17 @@
  */
 
 describe('OfflineScheme', function() {
+  /** @const */
   var OfflineScheme = shaka.offline.OfflineScheme;
-  var originalIsStorageEngineSupported =
-      shaka.offline.OfflineUtils.isStorageEngineSupported;
-  var originalCreateStorageEngine =
-      shaka.offline.OfflineUtils.createStorageEngine;
+
+  var mockSEFactory = new shaka.test.MockStorageEngineFactory();
 
   /** @type {{init: !jasmine.Spy, destroy: !jasmine.Spy, get: !jasmine.Spy}} */
   var fakeStorageEngine;
-  /** @type {!jasmine.Spy} */
-  var fakeCreateStorageEngine;
   /** @type {shakaExtern.Request} */
   var request;
 
-  afterAll(function() {
-    shaka.offline.OfflineUtils.isStorageEngineSupported =
-        originalIsStorageEngineSupported;
-    shaka.offline.OfflineUtils.createStorageEngine =
-        originalCreateStorageEngine;
-  });
-
   beforeEach(function() {
-    shaka.offline.OfflineUtils.isStorageEngineSupported = function() {
-      return true;
-    };
-
     fakeStorageEngine = jasmine.createSpyObj(
         'DBEngine', ['init', 'destroy', 'get']);
 
@@ -50,19 +36,24 @@ describe('OfflineScheme', function() {
     fakeStorageEngine.destroy.and.returnValue(commonResolve);
     fakeStorageEngine.get.and.returnValue(getResolve);
 
-    fakeCreateStorageEngine = jasmine.createSpy('createStorageEngine');
-    fakeCreateStorageEngine.and.returnValue(fakeStorageEngine);
-    shaka.offline.OfflineUtils.createStorageEngine =
-        shaka.test.Util.spyFunc(fakeCreateStorageEngine);
+    var makeStorageEngine = function() {
+      return Promise.resolve(fakeStorageEngine);
+    };
+
+    mockSEFactory.overrideIsSupported(true);
+    mockSEFactory.overrideCreate(makeStorageEngine);
 
     // The whole request is ignored by the OfflineScheme.
     var retry = shaka.net.NetworkingEngine.defaultRetryParameters();
     request = shaka.net.NetworkingEngine.makeRequest([], retry);
   });
 
+  afterEach(function() {
+    mockSEFactory.resetAll();
+  });
+
   it('will return special content-type header for manifests', function(done) {
-    var uri = 'offline:123';
-    fakeCreateStorageEngine.and.throwError();
+    var uri = shaka.offline.OfflineScheme.manifestIdToUri(123);
     OfflineScheme(uri, request)
         .then(function(response) {
           expect(response).toBeTruthy();
@@ -75,7 +66,7 @@ describe('OfflineScheme', function() {
   });
 
   it('will query DBEngine for segments', function(done) {
-    var uri = 'offline:123/456/789';
+    var uri = shaka.offline.OfflineScheme.segmentToUri(123, 456, 789);
 
     OfflineScheme(uri, request)
         .then(function(response) {
@@ -83,8 +74,6 @@ describe('OfflineScheme', function() {
           expect(response.uri).toBe(uri);
           expect(response.data).toBeTruthy();
 
-          expect(fakeCreateStorageEngine).toHaveBeenCalledTimes(1);
-          expect(fakeStorageEngine.init).toHaveBeenCalledTimes(1);
           expect(fakeStorageEngine.destroy).toHaveBeenCalledTimes(1);
           expect(fakeStorageEngine.get).toHaveBeenCalledTimes(1);
           expect(fakeStorageEngine.get).toHaveBeenCalledWith('segment', 789);
@@ -94,7 +83,7 @@ describe('OfflineScheme', function() {
   });
 
   it('will fail if segment not found', function(done) {
-    var uri = 'offline:123/456/789';
+    var uri = shaka.offline.OfflineScheme.segmentToUri(123, 456, 789);
     fakeStorageEngine.get.and.returnValue(Promise.resolve(null));
 
     OfflineScheme(uri, request)
@@ -107,8 +96,6 @@ describe('OfflineScheme', function() {
                   shaka.util.Error.Category.STORAGE,
                   shaka.util.Error.Code.REQUESTED_ITEM_NOT_FOUND, 789));
 
-          expect(fakeCreateStorageEngine).toHaveBeenCalledTimes(1);
-          expect(fakeStorageEngine.init).toHaveBeenCalledTimes(1);
           expect(fakeStorageEngine.destroy).toHaveBeenCalledTimes(1);
           expect(fakeStorageEngine.get).toHaveBeenCalledTimes(1);
           expect(fakeStorageEngine.get).toHaveBeenCalledWith('segment', 789);
@@ -118,8 +105,7 @@ describe('OfflineScheme', function() {
   });
 
   it('will fail for invalid URI', function(done) {
-    var uri = 'offline:abc';
-    fakeCreateStorageEngine.and.throwError();
+    var uri = 'offline:this-is-invalid';
     OfflineScheme(uri, request)
         .then(fail)
         .catch(function(err) {
