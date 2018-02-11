@@ -34,10 +34,10 @@ __Subtitle/caption parsers__
   - Selected by MIME type
   - Register with {@link shaka.text.TextEngine.registerParser}
   - Default text parser plugins:
-    - WebVTT: {@linksource shaka.media.VttTextParser} and
-      {@linksource shaka.media.Mp4VttParser}
-    - TTML: {@linksource shaka.media.TtmlTextParser} and
-      {@linksource shaka.media.Mp4TtmlParser}
+    - WebVTT: {@linksource shaka.text.VttTextParser} and
+      {@linksource shaka.text.Mp4VttParser}
+    - TTML: {@linksource shaka.text.TtmlTextParser} and
+      {@linksource shaka.text.Mp4TtmlParser}
 
 __Subtitle/caption displayers__
   - Configured at runtime on a Player instance
@@ -50,7 +50,8 @@ __Networking plugins__
   - Selected by URI scheme (http, https, etc.)
   - Register with {@link shaka.net.NetworkingEngine.registerScheme}
   - Default networking plugins:
-    - HTTP(S): {@linksource shaka.net.HttpPlugin}
+    - HTTP(S) XHR: {@linksource shaka.net.HttpXHRPlugin}
+    - HTTP(S) Fetch: {@linksource shaka.net.HttpFetchPlugin}
     - data URIs: {@linksource shaka.net.DataUriPlugin}
 
 __ABR plugins__
@@ -69,7 +70,6 @@ __Polyfills__
       {@linksource shaka.polyfill.VideoPlaybackQuality}
     - prefixed EME implementations for IE 11 and very old versions of embedded
       Chrome/Chromium: {@linksource shaka.polyfill.MediaKeys}
-    - Promise implementation for IE 11: {@linksource shaka.polyfill.Promise}
     - variants of VTTCue and TextTrackCue constructors:
       {@linksource shaka.polyfill.VTTCue}
 
@@ -92,7 +92,7 @@ You can start with the complete library (`+@complete`) and exclude any
 individual source file with a minus sign and a path:
 
 ```sh
-python build/build.py +@complete -lib/media/mp4_ttml_parser.js
+python build/build.py +@complete -lib/text/mp4_ttml_parser.js
 ```
 
 You can also exclude an entire category of plugins:
@@ -167,8 +167,8 @@ with the appropriate interfaces after the library is loaded.
 #### Giving Back
 
 If you have a great plugin that you'd like to contribute back to the community,
-we'd love to hear from you.  You can get in touch via our [mailing list][] to
+we'd love to hear from you.  You can get in touch via our [issue tracker][] to
 discuss it, and once it's ready, you can send a [pull request][] on github.
 
-[mailing list]: https://groups.google.com/forum/#!forum/shaka-player-users
+[issue tracker]: https://github.com/google/shaka-player/issues/new
 [pull request]: https://github.com/google/shaka-player/pull/new/master

@@ -40,8 +40,8 @@ describe('DashParser Live', function() {
 
   beforeAll(function() {
     jasmine.clock().install();
-    // This polyfill is required for fakeEventLoop.
-    shaka.polyfill.Promise.install(/* force */ true);
+    // This mock is required for fakeEventLoop.
+    PromiseMock.install();
   });
 
   beforeEach(function() {
@@ -54,7 +54,8 @@ describe('DashParser Live', function() {
         clockSyncUri: '',
         customScheme: function(node) { return null; },
         ignoreDrmInfo: false,
-        xlinkFailGracefully: false
+        xlinkFailGracefully: false,
+        defaultPresentationDelay: 10
       }
     });
     playerInterface = {
@@ -75,7 +76,7 @@ describe('DashParser Live', function() {
   afterAll(function() {
     Date.now = oldNow;
     jasmine.clock().uninstall();
-    shaka.polyfill.Promise.uninstall();
+    PromiseMock.uninstall();
   });
 
   /**
@@ -166,7 +167,7 @@ describe('DashParser Live', function() {
             // this case.
             expect(manifest.periods.length).toBe(1);
           }).catch(fail).then(done);
-      shaka.polyfill.Promise.flush();
+      PromiseMock.flush();
     }
 
     it('basic support', function(done) {
@@ -217,7 +218,7 @@ describe('DashParser Live', function() {
             expect(stream.findSegmentPosition(0)).toBe(2);
             ManifestParser.verifySegmentIndex(stream, basicRefs.slice(1));
           }).catch(fail).then(done);
-      shaka.polyfill.Promise.flush();
+      PromiseMock.flush();
     });
 
     it('evicts old references for multi-period live stream', function(done) {
@@ -278,7 +279,7 @@ describe('DashParser Live', function() {
             ManifestParser.verifySegmentIndex(stream1, []);
             ManifestParser.verifySegmentIndex(stream2, basicRefs.slice(1));
           }).catch(fail).then(done);
-      shaka.polyfill.Promise.flush();
+      PromiseMock.flush();
     });
 
     it('sets infinite duration for single-period live streams', function(done) {
@@ -308,7 +309,7 @@ describe('DashParser Live', function() {
             var timeline = manifest.presentationTimeline;
             expect(timeline.getDuration()).toBe(Infinity);
           }).catch(fail).then(done);
-      shaka.polyfill.Promise.flush();
+      PromiseMock.flush();
     });
 
     it('sets infinite duration for multi-period live streams', function(done) {
@@ -347,7 +348,7 @@ describe('DashParser Live', function() {
             var timeline = manifest.presentationTimeline;
             expect(timeline.getDuration()).toBe(Infinity);
           }).catch(fail).then(done);
-      shaka.polyfill.Promise.flush();
+      PromiseMock.flush();
     });
   }
 
@@ -396,7 +397,7 @@ describe('DashParser Live', function() {
           expect(filterAllPeriods.calls.count()).toBe(1);
           expect(filterNewPeriod.calls.count()).toBe(1);
         }).catch(fail).then(done);
-    shaka.polyfill.Promise.flush();
+    PromiseMock.flush();
   });
 
   it('uses redirect URL for manifest BaseURL', function(done) {
@@ -425,7 +426,10 @@ describe('DashParser Live', function() {
 
     // The initial manifest request will be redirected.
     fakeNetEngine.request.and.returnValue(
-        Promise.resolve({uri: redirectedUri, data: manifestData}));
+        shaka.util.AbortableOperation.completed({
+          uri: redirectedUri,
+          data: manifestData,
+        }));
 
     parser.start(originalUri, playerInterface)
         .then(function(manifest) {
@@ -440,7 +444,7 @@ describe('DashParser Live', function() {
           var segmentUri = stream.getSegmentReference(1).getUris()[0];
           expect(segmentUri).toBe(redirectedUri + 's1.mp4');
         }).catch(fail).then(done);
-    shaka.polyfill.Promise.flush();
+    PromiseMock.flush();
   });
 
   it('failures in update call error callback', function(done) {
@@ -460,13 +464,13 @@ describe('DashParser Live', function() {
               shaka.util.Error.Severity.CRITICAL,
               shaka.util.Error.Category.NETWORK,
               shaka.util.Error.Code.BAD_HTTP_STATUS);
-          var promise = Promise.reject(error);
-          fakeNetEngine.request.and.returnValue(promise);
+          var operation = shaka.util.AbortableOperation.failed(error);
+          fakeNetEngine.request.and.returnValue(operation);
 
           delayForUpdatePeriod();
           expect(onError.calls.count()).toBe(1);
         }).catch(fail).then(done);
-    shaka.polyfill.Promise.flush();
+    PromiseMock.flush();
   });
 
   it('uses @minimumUpdatePeriod', function(done) {
@@ -485,17 +489,17 @@ describe('DashParser Live', function() {
           var partialTime = updateTime * 1000 * 3 / 4;
           var remainingTime = updateTime * 1000 - partialTime;
           jasmine.clock().tick(partialTime);
-          shaka.polyfill.Promise.flush();
+          PromiseMock.flush();
 
           // Update period has not passed yet.
           expect(fakeNetEngine.request.calls.count()).toBe(1);
           jasmine.clock().tick(remainingTime);
-          shaka.polyfill.Promise.flush();
+          PromiseMock.flush();
 
           // Update period has passed.
           expect(fakeNetEngine.request.calls.count()).toBe(2);
         }).catch(fail).then(done);
-    shaka.polyfill.Promise.flush();
+    PromiseMock.flush();
   });
 
   it('still updates when @minimumUpdatePeriod is zero', function(done) {
@@ -513,12 +517,12 @@ describe('DashParser Live', function() {
 
           var waitTimeMs = shaka.dash.DashParser['MIN_UPDATE_PERIOD_'] * 1000;
           jasmine.clock().tick(waitTimeMs);
-          shaka.polyfill.Promise.flush();
+          PromiseMock.flush();
 
           // Update period has passed.
           expect(fakeNetEngine.request).toHaveBeenCalled();
         }).catch(fail).then(done);
-    shaka.polyfill.Promise.flush();
+    PromiseMock.flush();
   });
 
   it('does not update when @minimumUpdatePeriod is missing', function(done) {
@@ -536,14 +540,14 @@ describe('DashParser Live', function() {
 
           var waitTimeMs = shaka.dash.DashParser['MIN_UPDATE_PERIOD_'] * 1000;
           jasmine.clock().tick(waitTimeMs * 2);
-          shaka.polyfill.Promise.flush();
+          PromiseMock.flush();
 
           // Even though we have waited longer than the minimum update period,
           // the missing attribute means "do not update".  So no update should
           // have happened.
           expect(fakeNetEngine.request).not.toHaveBeenCalled();
         }).catch(fail).then(done);
-    shaka.polyfill.Promise.flush();
+    PromiseMock.flush();
   });
 
   it('uses Mpd.Location', function(done) {
@@ -568,7 +572,7 @@ describe('DashParser Live', function() {
     parser.start('dummy://foo', playerInterface)
         .then(function(manifest) {
           expect(fakeNetEngine.request.calls.count()).toBe(1);
-          fakeNetEngine.expectCancelableRequest('dummy://foo', manifestRequest);
+          fakeNetEngine.expectRequest('dummy://foo', manifestRequest);
           fakeNetEngine.request.calls.reset();
 
           // Create a mock so we can verify it gives two URIs.
@@ -576,14 +580,14 @@ describe('DashParser Live', function() {
             expect(type).toBe(manifestRequest);
             expect(request.uris).toEqual(['http://foobar', 'http://foobar2']);
             var data = shaka.util.StringUtils.toUTF8(manifestText);
-            return Promise.resolve(
+            return shaka.util.AbortableOperation.completed(
                 {uri: request.uris[0], data: data, headers: {}});
           });
 
           delayForUpdatePeriod();
           expect(fakeNetEngine.request.calls.count()).toBe(1);
         }).catch(fail).then(done);
-    shaka.polyfill.Promise.flush();
+    PromiseMock.flush();
   });
 
   it('uses @suggestedPresentationDelay', function(done) {
@@ -621,7 +625,7 @@ describe('DashParser Live', function() {
           expect(timeline.getSegmentAvailabilityEnd()).toBe(290);
           expect(timeline.getSeekRangeEnd()).toBe(230);
         }).catch(fail).then(done);
-    shaka.polyfill.Promise.flush();
+    PromiseMock.flush();
   });
 
   describe('maxSegmentDuration', function() {
@@ -653,7 +657,7 @@ describe('DashParser Live', function() {
             expect(timeline.getSegmentAvailabilityStart()).toBe(165);
             expect(timeline.getSegmentAvailabilityEnd()).toBe(285);
           }).catch(fail).then(done);
-      shaka.polyfill.Promise.flush();
+      PromiseMock.flush();
     });
 
     it('derived from SegmentTemplate w/ SegmentTimeline', function(done) {
@@ -731,7 +735,7 @@ describe('DashParser Live', function() {
             expect(timeline.getSegmentAvailabilityStart()).toBe(172);
             expect(timeline.getSegmentAvailabilityEnd()).toBe(292);
           }).catch(fail).then(done);
-      shaka.polyfill.Promise.flush();
+      PromiseMock.flush();
     }
   });
 
@@ -773,23 +777,21 @@ describe('DashParser Live', function() {
     it('stops updates', function(done) {
       parser.start(manifestUri, playerInterface)
           .then(function(manifest) {
-            fakeNetEngine.expectCancelableRequest(
-                manifestUri, manifestRequestType);
+            fakeNetEngine.expectRequest(manifestUri, manifestRequestType);
             fakeNetEngine.request.calls.reset();
 
             parser.stop();
             delayForUpdatePeriod();
             expect(fakeNetEngine.request).not.toHaveBeenCalled();
           }).catch(fail).then(done);
-      shaka.polyfill.Promise.flush();
+      PromiseMock.flush();
     });
 
     it('stops initial parsing', function(done) {
       parser.start('dummy://foo', playerInterface)
           .then(function(manifest) {
             expect(manifest).toBe(null);
-            fakeNetEngine.expectCancelableRequest(
-                manifestUri, manifestRequestType);
+            fakeNetEngine.expectRequest(manifestUri, manifestRequestType);
             fakeNetEngine.request.calls.reset();
             delayForUpdatePeriod();
             // An update should not occur.
@@ -800,34 +802,32 @@ describe('DashParser Live', function() {
       // after the request has started but before any parsing has been done.
       expect(fakeNetEngine.request.calls.count()).toBe(1);
       parser.stop();
-      shaka.polyfill.Promise.flush();
+      PromiseMock.flush();
     });
 
     it('interrupts manifest updates', function(done) {
       parser.start('dummy://foo', playerInterface)
           .then(function(manifest) {
             expect(manifest).toBeTruthy();
-            fakeNetEngine.expectCancelableRequest(
-                manifestUri, manifestRequestType);
+            fakeNetEngine.expectRequest(manifestUri, manifestRequestType);
             fakeNetEngine.request.calls.reset();
             var delay = fakeNetEngine.delayNextRequest();
 
             delayForUpdatePeriod();
             // The request was made but should not be resolved yet.
             expect(fakeNetEngine.request.calls.count()).toBe(1);
-            fakeNetEngine.expectCancelableRequest(
-                manifestUri, manifestRequestType);
+            fakeNetEngine.expectRequest(manifestUri, manifestRequestType);
             fakeNetEngine.request.calls.reset();
             parser.stop();
             delay.resolve();
-            shaka.polyfill.Promise.flush();
+            PromiseMock.flush();
 
             // Wait for another update period.
             delayForUpdatePeriod();
             // A second update should not occur.
             expect(fakeNetEngine.request).not.toHaveBeenCalled();
           }).catch(fail).then(done);
-      shaka.polyfill.Promise.flush();
+      PromiseMock.flush();
     });
 
     it('interrupts UTCTiming requests', function(done) {
@@ -837,7 +837,7 @@ describe('DashParser Live', function() {
       Util.delay(0.2, realTimeout).then(function() {
         // This is the initial manifest request.
         expect(fakeNetEngine.request.calls.count()).toBe(1);
-        fakeNetEngine.expectCancelableRequest(manifestUri, manifestRequestType);
+        fakeNetEngine.expectRequest(manifestUri, manifestRequestType);
         fakeNetEngine.request.calls.reset();
         // Resolve the manifest request and wait on the UTCTiming request.
         delay.resolve();
@@ -861,7 +861,7 @@ describe('DashParser Live', function() {
       }).catch(fail).then(done);
 
       parser.start('dummy://foo', playerInterface).catch(fail);
-      shaka.polyfill.Promise.flush();
+      PromiseMock.flush();
     });
   });
 
@@ -1000,6 +1000,29 @@ describe('DashParser Live', function() {
         basicLines, basicRefs, updateLines, updateRefs, partialUpdateLines);
   });
 
+  describe('SegmentTemplate w/ duration', function() {
+    var templateLines = [
+      '<SegmentTemplate startNumber="1" media="s$Number$.mp4" duration="2" />'
+    ];
+
+    it('produces sane references without assertions', function(done) {
+      var manifest = makeSimpleLiveManifestText(templateLines, updateTime);
+
+      fakeNetEngine.setResponseMapAsText({'dummy://foo': manifest});
+      parser.start('dummy://foo', playerInterface).then(function(manifest) {
+        expect(manifest.periods.length).toBe(1);
+        var stream = manifest.periods[0].variants[0].video;
+
+        // In https://github.com/google/shaka-player/issues/1204, this
+        // failed an assertion and returned endTime == 0.
+        var ref = stream.getSegmentReference(1);
+        expect(ref.endTime).toBeGreaterThan(0);
+      }).catch(fail).then(done);
+      PromiseMock.flush();
+    });
+  });
+
+
   describe('EventStream', function() {
     /** @const */
     var originalManifest = [
@@ -1054,7 +1077,7 @@ describe('DashParser Live', function() {
           })
           .catch(fail)
           .then(done);
-      shaka.polyfill.Promise.flush();
+      PromiseMock.flush();
     });
 
     it('will add timeline regions on manifest update', function(done) {
@@ -1087,7 +1110,7 @@ describe('DashParser Live', function() {
           })
           .catch(fail)
           .then(done);
-      shaka.polyfill.Promise.flush();
+      PromiseMock.flush();
     });
 
     it('will not let an event exceed the Period duration', function(done) {
@@ -1124,7 +1147,7 @@ describe('DashParser Live', function() {
           })
           .catch(fail)
           .then(done);
-      shaka.polyfill.Promise.flush();
+      PromiseMock.flush();
     });
   });
 });

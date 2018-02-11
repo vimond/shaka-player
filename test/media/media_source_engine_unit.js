@@ -15,6 +15,35 @@
  * limitations under the License.
  */
 
+
+/**
+ * @typedef {{
+ *   length: number,
+ *   start: jasmine.Spy,
+ *   end: jasmine.Spy
+ * }}
+ */
+var MockTimeRanges;
+
+
+/**
+ * @typedef {{
+ *   abort: jasmine.Spy,
+ *   appendBuffer: jasmine.Spy,
+ *   remove: jasmine.Spy,
+ *   updating: boolean,
+ *   addEventListener: jasmine.Spy,
+ *   removeEventListener: function(),
+ *   buffered: (MockTimeRanges|TimeRanges),
+ *   timestampOffset: number,
+ *   appendWindowEnd: number,
+ *   updateend: function(),
+ *   error: function()
+ * }}
+ */
+var MockSourceBuffer;
+
+
 describe('MediaSourceEngine', function() {
   var Util = shaka.test.Util;
   var ContentType = shaka.util.ManifestParserUtils.ContentType;
@@ -31,6 +60,7 @@ describe('MediaSourceEngine', function() {
   var fakeVideoStream = { mimeType: 'video/foo' };
   var fakeAudioStream = { mimeType: 'audio/foo' };
   var fakeTextStream = { mimeType: 'text/foo' };
+  var fakeTransportStream = {mimeType: 'tsMimetype'};
 
   var audioSourceBuffer;
   var videoSourceBuffer;
@@ -51,6 +81,9 @@ describe('MediaSourceEngine', function() {
     };
 
     shaka.text.TextEngine = createMockTextEngineCtor();
+    shaka.media.Transmuxer.isSupported = function(contentType, mimeType) {
+      return mimeType == 'tsMimetype';
+    };
   });
 
   afterAll(function() {
@@ -385,6 +418,48 @@ describe('MediaSourceEngine', function() {
             expect(mockTextEngine.appendBuffer)
                   .toHaveBeenCalledWith(data, 0, 10);
           }).catch(fail).then(done);
+    });
+
+    it('appends transmuxed data and captions', function(done) {
+      var initObject = {};
+      initObject[ContentType.VIDEO] = fakeTransportStream;
+      mediaSourceEngine.init(initObject);
+      mediaSourceEngine.setUseEmbeddedText(true);
+
+      mediaSourceEngine.appendBuffer(ContentType.VIDEO, buffer, null, null)
+          .then(function() {
+            expect(mockTextEngine.appendCues).toHaveBeenCalled();
+            expect(videoSourceBuffer.appendBuffer).toHaveBeenCalled();
+            done();
+          });
+      // The 'updateend' event fires once the data is done appending to the
+      // media source.  We only append to the media source once transmuxing is
+      // done.  Since transmuxing is done using Promises, we need to delay the
+      // event until MediaSourceEngine calls appendBuffer.
+      Util.delay(0.1).then(function() {
+        videoSourceBuffer.updateend();
+      });
+    });
+
+    it('appends only transmuxed data without embedded text', function(done) {
+      var initObject = {};
+      initObject[ContentType.VIDEO] = fakeTransportStream;
+      mediaSourceEngine.init(initObject);
+      mediaSourceEngine.setUseEmbeddedText(false);
+
+      mediaSourceEngine.appendBuffer(ContentType.VIDEO, buffer, null, null)
+          .then(function() {
+            expect(mockTextEngine.appendCues).not.toHaveBeenCalled();
+            expect(videoSourceBuffer.appendBuffer).toHaveBeenCalled();
+            done();
+          });
+      // The 'updateend' event fires once the data is done appending to the
+      // media source.  We only append to the media source once transmuxing is
+      // done.  Since transmuxing is done using Promises, we need to delay the
+      // event until MediaSourceEngine calls appendBuffer.
+      Util.delay(0.1).then(function() {
+        videoSourceBuffer.updateend();
+      });
     });
   });
 
@@ -956,6 +1031,7 @@ describe('MediaSourceEngine', function() {
     return mediaSource;
   }
 
+  /** @return {MockSourceBuffer} */
   function createMockSourceBuffer() {
     return {
       abort: jasmine.createSpy('abort'),
@@ -984,7 +1060,7 @@ describe('MediaSourceEngine', function() {
       mockTextEngine = jasmine.createSpyObj('TextEngine', [
         'initParser', 'destroy', 'appendBuffer', 'remove', 'setTimestampOffset',
         'setAppendWindow', 'bufferStart', 'bufferEnd', 'bufferedAheadOf',
-        'setDisplayer'
+        'setDisplayer', 'appendCues'
       ]);
 
       var resolve = Promise.resolve.bind(Promise);

@@ -276,7 +276,7 @@ describe('Player', function() {
           expect(player.isLive()).toEqual(isLive);
           video.play();
           // 30 seconds or video ended, whichever comes first.
-          return waitForTimeOrEnd(video, 30);
+          return waitForTimeOrEnd(video, 40);
         }).then(function() {
           if (video.ended) {
             expect(video.currentTime).toBeCloseTo(video.duration, 1);
@@ -289,7 +289,7 @@ describe('Player', function() {
               // Seek and play out the end.
               video.currentTime = video.duration - 15;
               // 30 seconds or video ended, whichever comes first.
-              return waitForTimeOrEnd(video, 30).then(function() {
+              return waitForTimeOrEnd(video, 40).then(function() {
                 expect(video.ended).toBe(true);
                 expect(video.currentTime).toBeCloseTo(video.duration, 1);
               });
@@ -312,7 +312,7 @@ describe('Player', function() {
     }
   });
 
-  describe('cancel', function() {
+  describe('abort', function() {
     /** @type {!jasmine.Spy} */
     var schemeSpy;
 
@@ -324,7 +324,7 @@ describe('Player', function() {
             shaka.util.Error.Severity.RECOVERABLE,
             shaka.util.Error.Category.NETWORK,
             shaka.util.Error.Code.HTTP_ERROR);
-        return Promise.reject(error);
+        return shaka.util.AbortableOperation.failed(error);
       });
       compiledShaka.net.NetworkingEngine.registerScheme('reject',
           Util.spyFunc(schemeSpy));
@@ -353,6 +353,61 @@ describe('Player', function() {
 
     it('destroy prevents further manifest load retries', function(done) {
       testTemplate(function() { return player.destroy(); }).then(done);
+    });
+  });
+
+  describe('TextDisplayer plugin', function() {
+    // Simulate the use of an external TextDisplayer plugin.
+    var textDisplayer;
+    beforeEach(function() {
+      textDisplayer = {
+        destroy: jasmine.createSpy('destroy'),
+        append: jasmine.createSpy('append'),
+        remove: jasmine.createSpy('remove'),
+        isTextVisible: jasmine.createSpy('isTextVisible'),
+        setTextVisibility: jasmine.createSpy('setTextVisibility')
+      };
+
+      textDisplayer.destroy.and.returnValue(Promise.resolve());
+      textDisplayer.isTextVisible.and.returnValue(true);
+
+      player.configure({
+        textDisplayFactory: function() { return textDisplayer; }
+      });
+
+      // Make sure the configuration was taken.
+      var configuredFactory = player.getConfiguration().textDisplayFactory;
+      var configuredTextDisplayer = new configuredFactory();
+      expect(configuredTextDisplayer).toBe(textDisplayer);
+    });
+
+    // Regression test for https://github.com/google/shaka-player/issues/1187
+    it('does not throw on destroy', function(done) {
+      player.load('test:sintel_compiled').then(function() {
+        video.play();
+        return waitUntilPlayheadReaches(video, 1, 10);
+      }).then(function() {
+        return player.unload();
+      }).then(function() {
+        // Before we fixed #1187, the call to destroy() on textDisplayer was
+        // renamed in the compiled version and could not be called.
+        expect(textDisplayer.destroy).toHaveBeenCalled();
+      }).catch(fail).then(done);
+    });
+  });
+
+  describe('TextAndRoles', function() {
+    // Regression Test. Makes sure that the language and role fields have been
+    // properly exported from the player.
+    it('exports language and roles fields', function(done) {
+      player.load('test:sintel_compiled').then(() => {
+        let languagesAndRoles = player.getTextLanguagesAndRoles();
+        expect(languagesAndRoles.length).toBeTruthy();
+        languagesAndRoles.forEach((languageAndRole) => {
+          expect(languageAndRole.language).not.toBeUndefined();
+          expect(languageAndRole.role).not.toBeUndefined();
+        });
+      }).catch(fail).then(done);
     });
   });
 

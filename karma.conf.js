@@ -65,6 +65,8 @@ module.exports = function(config) {
     // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
     frameworks: [
       'jasmine-ajax', 'jasmine',
+      // Fixes backtraces after Babel preprocessing
+      'source-map-support',
     ],
 
     plugins: [
@@ -80,17 +82,14 @@ module.exports = function(config) {
       'dist/deps.js',
       'shaka-player.uncompiled.js',
 
-      // sprintf module next
-      // Since we don't use require to load the sprintf module, this must be
-      // loaded before requirejs is loaded!  Otherwise, it tries to use
-      // requirejs instead of loading directly into the window.
-      'node_modules/sprintf-js/src/sprintf.js',
+      // Promise polyfill for IE11 and some older TVs
+      'node_modules/es6-promise-polyfill/promise.js',
 
       // muxjs module next
       'node_modules/mux.js/dist/mux.js',
 
-      // requirejs module next
-      'node_modules/requirejs/require.js',
+      // cajon module (an AMD variant of requirejs) next
+      'node_modules/cajon/cajon.js',
 
       // bootstrapping for the test suite
       'test/test/boot.js',
@@ -111,6 +110,7 @@ module.exports = function(config) {
       {pattern: 'third_party/closure/goog/**/*.js', included: false},
       {pattern: 'test/test/assets/*', included: false},
       {pattern: 'dist/shaka-player.compiled.js', included: false},
+      {pattern: 'node_modules/**/*.js', included: false},
     ],
 
     // NOTE: Do not use proxies at all!  They cannot be used with the --hostname
@@ -118,10 +118,27 @@ module.exports = function(config) {
     proxies: {},
 
     preprocessors: {
-      // Don't compute coverage over lib/debug/ or lib/polyfill/
-      'lib/!(debug|polyfill)/*.js': 'coverage',
+      // Compute coverage over everything but lib/debug/ or lib/polyfill/
+      'lib/!(debug|polyfill)/*.js': ['coverage'],
       // Player is not matched by the above, so add it explicitly
-      'lib/player.js': 'coverage',
+      'lib/player.js': ['coverage'],
+
+      // Convert ES6 to ES5 so we can still run tests on IE11.
+      'lib/**/*.js': ['babel'],
+      'test/**/*.js': ['babel'],
+    },
+
+    babelPreprocessor: {
+      options: {
+        presets: [
+          // Some of our tests are not written with strict mode in mind, but the
+          // plugin for commonjs modules enforces strict mode.  Since we do not
+          // use modules, just disable them.
+          ['env', { modules: false }],
+        ],
+        // The source-map-support framework is necessary to make this work:
+        sourceMap: 'inline',
+      },
     },
 
     // to avoid DISCONNECTED messages on Safari:

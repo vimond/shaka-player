@@ -24,8 +24,8 @@ goog.provide('shaka.test.FakePresentationTimeline');
 goog.provide('shaka.test.FakeStreamingEngine');
 goog.provide('shaka.test.FakeTextDisplayer');
 goog.provide('shaka.test.FakeTextTrack');
+goog.provide('shaka.test.FakeTransmuxer');
 goog.provide('shaka.test.FakeVideo');
-
 
 /**
  * @fileoverview Defines simple mocks for library types.
@@ -194,8 +194,9 @@ shaka.test.FakeStreamingEngine = function(onChooseStreams, onCanSwitch) {
 
   var ret = jasmine.createSpyObj('fakeStreamingEngine', [
     'destroy', 'configure', 'init', 'getCurrentPeriod', 'getActivePeriod',
-    'getActiveAudio', 'getActiveVideo', 'getActiveText', 'notifyNewTextStream',
-    'switchVariant', 'switchTextStream', 'seeked'
+    'getActiveAudio', 'getActiveVideo', 'getActiveText', 'loadNewTextStream',
+    'switchVariant', 'switchTextStream', 'seeked',
+    'unloadTextStream'
   ]);
   ret.destroy.and.callFake(resolve);
   ret.getCurrentPeriod.and.returnValue(null);
@@ -203,7 +204,7 @@ shaka.test.FakeStreamingEngine = function(onChooseStreams, onCanSwitch) {
   ret.getActiveAudio.and.callFake(function() { return activeAudio; });
   ret.getActiveVideo.and.callFake(function() { return activeVideo; });
   ret.getActiveText.and.callFake(function() { return activeText; });
-  ret.notifyNewTextStream.and.callFake(resolve);
+  ret.loadNewTextStream.and.callFake(resolve);
   ret.init.and.callFake(function() {
     var chosen = onChooseStreams();
     return Promise.resolve().then(function() {
@@ -327,6 +328,8 @@ shaka.test.FakeVideo = function(opt_currentTime) {
     buffered: null,
     src: '',
     textTracks: [],
+    offsetWidth: 1000,
+    offsetHeight: 1000,
 
     addTextTrack: jasmine.createSpy('addTextTrack'),
     setMediaKeys: jasmine.createSpy('createMediaKeys'),
@@ -409,8 +412,6 @@ shaka.test.FakePresentationTimeline = function() {
     getPresentationStartTime: jasmine.createSpy('getPresentationStartTime'),
     setClockOffset: jasmine.createSpy('setClockOffset'),
     setStatic: jasmine.createSpy('setStatic'),
-    getSegmentAvailabilityDuration:
-        jasmine.createSpy('getSegmentAvailabilityDuration'),
     notifySegments: jasmine.createSpy('notifySegments'),
     notifyMaxSegmentDuration: jasmine.createSpy('notifyMaxSegmentDuration'),
     isLive: jasmine.createSpy('isLive'),
@@ -441,10 +442,6 @@ shaka.test.FakePresentationTimeline.prototype.setClockOffset;
 
 /** @type {jasmine.Spy} */
 shaka.test.FakePresentationTimeline.prototype.setStatic;
-
-
-/** @type {jasmine.Spy} */
-shaka.test.FakePresentationTimeline.prototype.getSegmentAvailabilityDuration;
 
 
 /** @type {jasmine.Spy} */
@@ -637,3 +634,34 @@ shaka.test.FakeTextDisplayer.prototype.append;
 
 /** @type {!jasmine.Spy} */
 shaka.test.FakeTextDisplayer.prototype.destroy;
+
+
+
+/**
+ * Creates a transmuxer.
+ *
+ * @constructor
+ * @struct
+ * @extends {shaka.media.Transmuxer}
+ * @return {!Object}
+ */
+shaka.test.FakeTransmuxer = function() {
+  var output = {
+    data: new Uint8Array(),
+    captions: []
+  };
+  var transmuxer = {
+    destroy: jasmine.createSpy('destroy').and.returnValue(Promise.resolve()),
+    transmux: jasmine.createSpy('transmux').and
+        .returnValue(Promise.resolve(output))
+  };
+  return transmuxer;
+};
+
+
+/** @type {!jasmine.Spy} */
+shaka.test.FakeTransmuxer.prototype.destroy;
+
+
+/** @type {!jasmine.Spy} */
+shaka.test.FakeTransmuxer.prototype.transmux;

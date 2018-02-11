@@ -102,8 +102,8 @@ describe('StreamingEngine', function() {
   beforeAll(function() {
     jasmine.clock().install();
     jasmine.clock().mockDate();
-    // This polyfill is required for fakeEventLoop.
-    shaka.polyfill.Promise.install(/* force */ true);
+    // This mock is required for fakeEventLoop.
+    PromiseMock.install();
   });
 
   /** @param {boolean=} opt_trickMode */
@@ -196,6 +196,7 @@ describe('StreamingEngine', function() {
         0 /* segmentAvailabilityStart */,
         40 /* segmentAvailabilityEnd */,
         40 /* presentationDuration */,
+        10 /* maxSegmentDuration */,
         false /* isLive */);
 
     setupManifest(
@@ -305,6 +306,7 @@ describe('StreamingEngine', function() {
         100 /* segmentAvailabilityStart */,
         140 /* segmentAvailabilityEnd */,
         140 /* presentationDuration */,
+        10 /* maxSegmentDuration */,
         true /* isLive */);
 
     setupManifest(
@@ -449,7 +451,8 @@ describe('StreamingEngine', function() {
         ignoreTextStreamFailures: false,
         startAtSegmentBoundary: false,
         smallGapLimit: 0.5,
-        jumpLargeGaps: false
+        jumpLargeGaps: false,
+        durationBackoff: 1
       };
     }
 
@@ -473,11 +476,11 @@ describe('StreamingEngine', function() {
 
   afterEach(function(done) {
     streamingEngine.destroy().catch(fail).then(done);
-    shaka.polyfill.Promise.flush();
+    PromiseMock.flush();
   });
 
   afterAll(function() {
-    shaka.polyfill.Promise.uninstall();
+    PromiseMock.uninstall();
     jasmine.clock().uninstall();
   });
 
@@ -615,6 +618,35 @@ describe('StreamingEngine', function() {
     });
 
     verifyNetworkingEngineRequestCalls(2);
+  });
+
+  describe('unloadTextStream', function() {
+    it('doesn\'t send requests for text after calling unload', function() {
+      setupVod();
+      mediaSourceEngine = new shaka.test.FakeMediaSourceEngine(segmentData);
+      createStreamingEngine();
+      playhead.getTime.and.returnValue(0);
+      onStartupComplete.and.callFake(function() {setupFakeGetTime(0);});
+      onChooseStreams.and.callFake(onChooseStreamsWithUnloadedText);
+
+      streamingEngine.init();
+      var segmentType = shaka.net.NetworkingEngine.RequestType.SEGMENT;
+
+      // Verify that after unloading text stream, no network request for text
+      // is sent.
+      runTest(function() {
+        if (playheadTime == 1) {
+          netEngine.expectRequest('1_text_1', segmentType);
+          netEngine.request.calls.reset();
+          streamingEngine.unloadTextStream();
+        } else if (playheadTime == 35) {
+          netEngine.expectNoRequest('1_text_1', segmentType);
+          netEngine.expectNoRequest('1_text_2', segmentType);
+          netEngine.expectNoRequest('2_text_1', segmentType);
+          netEngine.expectNoRequest('2_text_2', segmentType);
+        }
+      });
+    });
   });
 
   it('initializes and plays live', function() {
@@ -920,6 +952,30 @@ describe('StreamingEngine', function() {
     expect(timeline.setDuration).toHaveBeenCalledWith(35);
   });
 
+  it('applies fudge factor for appendWindowStart', function() {
+    setupVod();
+    mediaSourceEngine = new shaka.test.FakeMediaSourceEngine(segmentData);
+    createStreamingEngine();
+
+    playhead.getTime.and.returnValue(0);
+    onStartupComplete.and.callFake(setupFakeGetTime.bind(null, 0));
+    onChooseStreams.and.callFake(defaultOnChooseStreams);
+
+    // Here we go!
+    streamingEngine.init();
+    runTest();
+
+    // The second Period starts at 20, so we should set the appendWindowStart to
+    // 20, but reduced by a small fudge factor.
+    var lt20 = {
+      asymmetricMatch: function(val) {
+        return val > 19.9 && val < 20;
+      }
+    };
+    expect(mediaSourceEngine.setStreamProperties)
+        .toHaveBeenCalledWith('video', 20, lt20, 40);
+  });
+
   describe('switchVariant/switchTextStream', function() {
     var initialVariant;
     var sameAudioVariant;
@@ -953,7 +1009,7 @@ describe('StreamingEngine', function() {
         request: function(requestType, request) {
           var buffer = new ArrayBuffer(0);
           var response = { uri: request.uris[0], data: buffer, headers: {} };
-          return Promise.resolve(response);
+          return shaka.util.AbortableOperation.completed(response);
         }
       };
 
@@ -1774,7 +1830,7 @@ describe('StreamingEngine', function() {
       };
       netEngine.request.and.callFake(function(requestType, request) {
         if (request.uris[0] == textUri) {
-          return Promise.reject(new shaka.util.Error(
+          return shaka.util.AbortableOperation.failed(new shaka.util.Error(
               shaka.util.Error.Severity.CRITICAL,
               shaka.util.Error.Category.NETWORK,
               shaka.util.Error.Code.BAD_HTTP_STATUS, textUri, 404));
@@ -1791,7 +1847,8 @@ describe('StreamingEngine', function() {
         ignoreTextStreamFailures: true,
         startAtSegmentBoundary: false,
         smallGapLimit: 0.5,
-        jumpLargeGaps: false
+        jumpLargeGaps: false,
+        durationBackoff: 1
       };
       createStreamingEngine(config);
 
@@ -1828,7 +1885,8 @@ describe('StreamingEngine', function() {
         ignoreTextStreamFailures: false,
         startAtSegmentBoundary: false,
         smallGapLimit: 0.5,
-        jumpLargeGaps: false
+        jumpLargeGaps: false,
+        durationBackoff: 1
       };
       createStreamingEngine(config);
 
@@ -1872,7 +1930,8 @@ describe('StreamingEngine', function() {
         ignoreTextStreamFailures: false,
         startAtSegmentBoundary: false,
         smallGapLimit: 0.5,
-        jumpLargeGaps: false
+        jumpLargeGaps: false,
+        durationBackoff: 1
       };
       createStreamingEngine(config);
 
@@ -1918,7 +1977,8 @@ describe('StreamingEngine', function() {
         ignoreTextStreamFailures: false,
         startAtSegmentBoundary: false,
         smallGapLimit: 0.5,
-        jumpLargeGaps: false
+        jumpLargeGaps: false,
+        durationBackoff: 1
       };
       createStreamingEngine(config);
 
@@ -1970,7 +2030,8 @@ describe('StreamingEngine', function() {
         ignoreTextStreamFailures: false,
         startAtSegmentBoundary: false,
         smallGapLimit: 0.5,
-        jumpLargeGaps: false
+        jumpLargeGaps: false,
+        durationBackoff: 1
       };
       createStreamingEngine(config);
 
@@ -2112,13 +2173,14 @@ describe('StreamingEngine', function() {
   });
 
   describe('eviction', function() {
-    it('evicts media to meet the max buffer tail limit', function() {
+    var config;
+
+    beforeEach(function() {
       setupVod();
 
       manifest.minBufferTime = 1;
 
-      // Create StreamingEngine.
-      var config = {
+      config = {
         rebufferingGoal: 1,
         bufferingGoal: 1,
         retryParameters: shaka.net.NetworkingEngine.defaultRetryParameters(),
@@ -2127,13 +2189,17 @@ describe('StreamingEngine', function() {
         ignoreTextStreamFailures: false,
         startAtSegmentBoundary: false,
         smallGapLimit: 0.5,
-        jumpLargeGaps: false
+        jumpLargeGaps: false,
+        durationBackoff: 1
       };
 
+      playhead.getTime.and.returnValue(0);
+    });
+
+    it('evicts media to meet the max buffer tail limit', function() {
+      // Create StreamingEngine.
       mediaSourceEngine = new shaka.test.FakeMediaSourceEngine(segmentData);
       createStreamingEngine(config);
-
-      playhead.getTime.and.returnValue(0);
 
       onStartupComplete.and.callFake(setupFakeGetTime.bind(null, 0));
 
@@ -2151,11 +2217,11 @@ describe('StreamingEngine', function() {
             expect(playheadTime).toBe(30);
             expect(start).toBe(10);
             expect(end).toBe(20);
-            return originalRemove.call(null, type, start, end);
+            return originalRemove(type, start, end);
           });
         }
 
-        return originalRemove.call(null, type, start, end);
+        return originalRemove(type, start, end);
       });
 
       // Here we go!
@@ -2197,6 +2263,34 @@ describe('StreamingEngine', function() {
         text: [false, false, true, true]
       });
     });
+
+    it('doesn\'t evict too much when bufferBehind is very low', function() {
+      // Set the bufferBehind to a value significantly below the segment size.
+      config.bufferBehind = 0.1;
+
+      // Create StreamingEngine.
+      mediaSourceEngine = new shaka.test.FakeMediaSourceEngine(segmentData);
+      createStreamingEngine(config);
+      onStartupComplete.and.callFake(setupFakeGetTime.bind(null, 0));
+      onChooseStreams.and.callFake(defaultOnChooseStreams.bind(null));
+      streamingEngine.init();
+
+      runTest(() => {
+        if (playheadTime == 8) {
+          // Run the test until a bit before the end of the first segment.
+          playing = false;
+        } else if (playheadTime == 6) {
+          // Soon before stopping the test, set the buffering goal up way
+          // higher to trigger more segment fetching, to (potentially) trigger
+          // an eviction.
+          config.bufferingGoal = 5;
+          streamingEngine.configure(config);
+        }
+      });
+
+      // It should not have removed any segments.
+      expect(mediaSourceEngine.remove).not.toHaveBeenCalled();
+    });
   });
 
   describe('QuotaExceededError', function() {
@@ -2215,7 +2309,8 @@ describe('StreamingEngine', function() {
         ignoreTextStreamFailures: false,
         startAtSegmentBoundary: false,
         smallGapLimit: 0.5,
-        jumpLargeGaps: false
+        jumpLargeGaps: false,
+        durationBackoff: 1
       };
 
       mediaSourceEngine = new shaka.test.FakeMediaSourceEngine(segmentData);
@@ -2285,7 +2380,8 @@ describe('StreamingEngine', function() {
         ignoreTextStreamFailures: false,
         startAtSegmentBoundary: false,
         smallGapLimit: 0.5,
-        jumpLargeGaps: false
+        jumpLargeGaps: false,
+        durationBackoff: 1
       };
 
       mediaSourceEngine = new shaka.test.FakeMediaSourceEngine(segmentData);
@@ -2474,7 +2570,8 @@ describe('StreamingEngine', function() {
         rebufferingGoal: 1,
         bufferingGoal: 1,
         smallGapLimit: 0.5,
-        jumpLargeGaps: false
+        jumpLargeGaps: false,
+        durationBackoff: 1
       });
 
       playhead.getTime.and.returnValue(0);
@@ -2699,6 +2796,24 @@ describe('StreamingEngine', function() {
   }
 
   /**
+   * Choose streams for the given period, used for testing unload text stream.
+   * The text stream of the second period is not choosen.
+   *
+   * @param {shakaExtern.Period} period
+   * @return {!Object.<string, !shakaExtern.Stream>}
+   */
+  function onChooseStreamsWithUnloadedText(period) {
+    if (period == manifest.periods[0]) {
+      return { variant: variant1, text: textStream1 };
+    } else if (period == manifest.periods[1]) {
+      expect(streamingEngine.unloadTextStream).toHaveBeenCalled();
+      return { variant: variant2 };
+    } else {
+      throw new Error();
+    }
+  }
+
+  /**
    * Makes the mock Playhead object behave as a fake Playhead object which
    * begins playback at the given time.
    *
@@ -2743,7 +2858,7 @@ describe('StreamingEngine', function() {
                 data.push('');
               }
 
-              return Promise.reject(new shaka.util.Error(
+              return shaka.util.AbortableOperation.failed(new shaka.util.Error(
                   shaka.util.Error.Severity.CRITICAL,
                   shaka.util.Error.Category.NETWORK,
                   errorCode, data));

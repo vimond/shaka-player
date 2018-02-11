@@ -17,7 +17,7 @@
 
 goog.provide('shaka.test.FakeNetworkingEngine');
 
-goog.require('shaka.util.StringUtils');
+/** @fileoverview @suppress {missingRequire} */
 
 
 
@@ -95,16 +95,16 @@ shaka.test.FakeNetworkingEngine.expectRequest = function(
 
 
 /**
- * Expects that a cancelable request for the given segment has occurred.
+ * Expects that no request for the given segment has occurred.
  *
  * @param {!Object} requestSpy
  * @param {string} uri
  * @param {shaka.net.NetworkingEngine.RequestType} type
  */
-shaka.test.FakeNetworkingEngine.expectCancelableRequest = function(
+shaka.test.FakeNetworkingEngine.expectNoRequest = function(
     requestSpy, uri, type) {
-  expect(requestSpy).toHaveBeenCalledWith(
-      type, jasmine.objectContaining({uris: [uri]}), jasmine.any(Function));
+  expect(requestSpy).not.toHaveBeenCalledWith(
+      type, jasmine.objectContaining({uris: [uri]}));
 };
 
 
@@ -133,7 +133,7 @@ shaka.test.FakeNetworkingEngine.expectRangeRequest = function(
 /**
  * @param {shaka.net.NetworkingEngine.RequestType} type
  * @param {shakaExtern.Request} request
- * @return {!Promise.<shakaExtern.Response>}
+ * @return {!shakaExtern.IAbortableOperation.<shakaExtern.Response>}
  * @private
  */
 shaka.test.FakeNetworkingEngine.prototype.requestImpl_ = function(
@@ -146,7 +146,11 @@ shaka.test.FakeNetworkingEngine.prototype.requestImpl_ = function(
   if (!result && request.method != 'HEAD') {
     // Give a more helpful error message to jasmine.
     expect(request.uris[0]).toBe('in the response map');
-    return Promise.reject();
+    var error = new shaka.util.Error(
+        shaka.util.Error.Severity.CRITICAL,
+        shaka.util.Error.Category.NETWORK,
+        shaka.util.Error.Code.UNEXPECTED_TEST_REQUEST);
+    return shaka.util.AbortableOperation.failed(error);
   }
 
   /** @type {shakaExtern.Response} */
@@ -159,10 +163,11 @@ shaka.test.FakeNetworkingEngine.prototype.requestImpl_ = function(
   if (this.delayNextRequestPromise_) {
     var delay = this.delayNextRequestPromise_;
     this.delayNextRequestPromise_ = null;
-    return delay.then(function() { return response; });
+    return shaka.util.AbortableOperation.notAbortable(
+        delay.then(function() { return response; }));
+  } else {
+    return shaka.util.AbortableOperation.completed(response);
   }
-  else
-    return Promise.resolve(response);
 };
 
 
@@ -212,15 +217,14 @@ shaka.test.FakeNetworkingEngine.prototype.expectRequest = function(uri, type) {
 
 
 /**
- * Expects that a cancelable request for the given segment has occurred.
+ * Expects that no request for the given segment has occurred.
  *
  * @param {string} uri
  * @param {shaka.net.NetworkingEngine.RequestType} type
  */
-shaka.test.FakeNetworkingEngine.prototype.expectCancelableRequest =
+shaka.test.FakeNetworkingEngine.prototype.expectNoRequest =
     function(uri, type) {
-  shaka.test.FakeNetworkingEngine.expectCancelableRequest(
-      this.request, uri, type);
+  shaka.test.FakeNetworkingEngine.expectNoRequest(this.request, uri, type);
 };
 
 

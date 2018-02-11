@@ -90,7 +90,8 @@ describe('StreamingEngine', function() {
       useRelativeCueTimestamps: false,
       startAtSegmentBoundary: false,
       smallGapLimit: 0.5,
-      jumpLargeGaps: false
+      jumpLargeGaps: false,
+      durationBackoff: 1
     };
 
     onChooseStreams = jasmine.createSpy('onChooseStreams');
@@ -153,6 +154,7 @@ describe('StreamingEngine', function() {
           0 /* segmentAvailabilityStart */,
           60 /* segmentAvailabilityEnd */,
           60 /* presentationDuration */,
+          metadata.video.segmentDuration /* maxSegmentDuration */,
           false /* isLive */);
 
       setupNetworkingEngine(
@@ -188,6 +190,7 @@ describe('StreamingEngine', function() {
           275 - 10 /* segmentAvailabilityStart */,
           295 - 10 /* segmentAvailabilityEnd */,
           Infinity /* presentationDuration */,
+          metadata.video.segmentDuration /* maxSegmentDuration */,
           true /* isLive */);
 
       setupNetworkingEngine(
@@ -710,6 +713,7 @@ describe('StreamingEngine', function() {
                 0 /* segmentAvailabilityStart */,
                 30 /* segmentAvailabilityEnd */,
                 30 /* presentationDuration */,
+                metadata.video.segmentDuration /* maxSegmentDuration */,
                 false /* isLive */);
 
         setupNetworkingEngine(
@@ -829,7 +833,7 @@ describe('StreamingEngine', function() {
       };
       eventManager.listen(video, 'timeupdate', onTimeUpdate);
       var timeout = shaka.test.Util.delay(30).then(function() {
-        throw 'Timeout waiting for time';
+        throw new Error('Timeout waiting for time');
       });
       return Promise.race([p, timeout]);
     }
