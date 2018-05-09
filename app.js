@@ -191,6 +191,12 @@ app.init = function() {
   // Load the adaptation setting.
   app.onAdaptationChange();
 
+  var smallGapsToleranceConfig = {
+	  userAgentMatch: /Edge|Trident\/7/,
+	  maxGapLength: 0.5
+  };
+  app.player_.configure({ 'smallGapsTolerance': smallGapsToleranceConfig });
+  
   var fields = location.search.split('?').slice(1).join('?');
   fields = fields ? fields.split(';') : [];
   var params = {};
@@ -294,6 +300,7 @@ app.init = function() {
     console.log('Shaka reported ended.');
     app.player_.destroy();
   });
+  //app.loadStream();
 };
 
 
@@ -805,7 +812,7 @@ app.loadDashStream = function() {
             appUtils.interpretContentProtection.bind(
                 null, app.player_, wvServerUrl),
             estimator,
-            abrManager, null, extendedConfig && extendedConfig.manifestModifier));
+            abrManager, null, extendedConfig.manifestModifier));
 
   }
 };
