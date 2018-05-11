@@ -167,7 +167,7 @@ app.init = function() {
   
   app.video_.addEventListener('encrypted', function(evt) {
     "use strict";
-    console.log('***** Encrypted is fired!', evt);
+    //console.log('***** Encrypted is fired!', evt);
   });
   
   
@@ -191,10 +191,8 @@ app.init = function() {
   // Load the adaptation setting.
   app.onAdaptationChange();
 
-  var smallGapsToleranceConfig = {
-	  userAgentMatch: /Edge|Trident\/7/,
-	  maxGapLength: 0.5
-  };
+  var smallGapsToleranceConfig = new shaka.vimond.dash.SmallGapsTolerancePolicy(/Edge|Trident\/7/, 0.5);
+
   app.player_.configure({ 'smallGapsTolerance': smallGapsToleranceConfig });
   
   var fields = location.search.split('?').slice(1).join('?');
@@ -799,8 +797,8 @@ app.loadDashStream = function() {
 
     extendedConfig = extendedConfig || {};
     extendedConfig.manifestModifier = extendedConfig.manifestModifier || {};
-    extendedConfig.manifestModifier.bigIntegersFixPolicy = 'default';
-
+    //extendedConfig.manifestModifier.bigIntegersFixPolicy = 'default';
+      
     var estimator = /** @type {!shaka.util.IBandwidthEstimator} */(
         app.estimator_);
     var abrManager = new shaka.media.SimpleAbrManager();
