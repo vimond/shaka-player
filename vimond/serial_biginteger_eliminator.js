@@ -123,7 +123,7 @@ shaka.vimond.dash.SerialBigIntegerEliminator.handlers = {
                 originalScaledNetOffset = originalScaledOffset.subtract(state.currentPresentationTimeOffset || 0), // The scaled time from availabilityst
                 startTimeDifferenceSeconds = state.originalAvailabilityStartTimeSeconds - state.adjustedAvailabilityStartTimeSeconds,
                 adjustedScaledStartOffset = originalScaledNetOffset.add(startTimeDifferenceSeconds * state.currentTimescale).toJSNumber(),
-                timestampOffset = state.adjustedAvailabilityStartTimeSeconds + state.currentPresentationTimeOffset.divide(state.currentTimescale).toJSNumber() - state.originalAvailabilityStartTimeSeconds;
+                timestampOffset = state.currentPresentationTimeOffset ? state.adjustedAvailabilityStartTimeSeconds + state.currentPresentationTimeOffset.divide(state.currentTimescale).toJSNumber() - state.originalAvailabilityStartTimeSeconds : state.adjustedAvailabilityStartTimeSeconds;
 
             /*
             window.presentationTimeOffset = shaka.vimond.Integer.create(state.currentPresentationTimeOffset).divide(state.currentTimescale).toJSNumber();
@@ -206,6 +206,7 @@ shaka.vimond.dash.SerialBigIntegerEliminator.eliminate = function(manifestString
     
     var isEligible = shaka.vimond.dash.SerialBigIntegerEliminator.MANIFEST_ELIGIBILITY_REGEX.test(manifestString);
     if (isEligible) {
+        console.log('*** Big integer ***');
         var replaced = manifestString.replace(shaka.vimond.dash.SerialBigIntegerEliminator.MANIFEST_REPLACEMENT_REGEX, replace),
             workaroundState = new shaka.vimond.dash.SerialBigIntegerEliminator.WorkaroundState();
         workaroundState.originalAvailabilityStartTimeSeconds = state.originalAvailabilityStartTimeSeconds;
